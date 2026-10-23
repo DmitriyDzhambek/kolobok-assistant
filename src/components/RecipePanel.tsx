@@ -59,7 +59,8 @@ export function RecipePanel({
 
 	const searched = useMemo(() => searchRecipes(query), [query]);
 	const filtered = useMemo(
-		() => (cat === "all" ? searched : searched.filter((r) => r.category === cat)),
+		() =>
+			cat === "all" ? searched : searched.filter((r) => r.category === cat),
 		[searched, cat],
 	);
 	const empty = filtered.length === 0;
@@ -69,7 +70,9 @@ export function RecipePanel({
 			: searchRecipes("").filter((r) => r.category === cat)
 		: filtered;
 
-	const rec = selected ? RECIPES.find((r) => r.id === selected) ?? null : null;
+	const rec = selected
+		? (RECIPES.find((r) => r.id === selected) ?? null)
+		: null;
 	const isFav = rec ? favs.includes(rec.id) : false;
 
 	return (
@@ -214,8 +217,8 @@ export function RecipePanel({
 
 						{empty && (
 							<div className="rp-empty">
-								По запросу «{query}» в этой полке пусто — держи самые
-								популярные в России:
+								По запросу «{query}» в этой полке пусто — держи самые популярные
+								в России:
 							</div>
 						)}
 

@@ -87,8 +87,7 @@ const recipeCases = [
 let recipeFail = 0;
 for (const [q, id] of recipeCases) {
 	const r = await runCommand(q, ctx);
-	const ok =
-		!!r.recipe && !r.link && (id ? r.recipe.id === id : !r.recipe.id);
+	const ok = !!r.recipe && !r.link && (id ? r.recipe.id === id : !r.recipe.id);
 	if (!ok) recipeFail++;
 	console.log(
 		(ok ? "— " : "✗ ") +

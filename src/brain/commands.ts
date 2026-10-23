@@ -508,11 +508,15 @@ export async function runCommand(
 	}
 
 	// --- Волшебная книга рецептов: карточки внутри Колобка, сайты не открываем ---
-	const recipeWord = /рецепт|приготов(ь|ить|лю)|чем (бы )?(мне )?(питаться|пообедать|поужинать)/.test(
-		n,
-	);
+	const recipeWord =
+		/рецепт|приготов(ь|ить|лю)|чем (бы )?(мне )?(питаться|пообедать|поужинать)/.test(
+			n,
+		);
 	const recipeGuess = findRecipe(
-		n.replace(/^(найди|поищи|покажи|открой|скажи|подскажи|сделай|приготовь)\s+/, ""),
+		n.replace(
+			/^(найди|поищи|покажи|открой|скажи|подскажи|сделай|приготовь)\s+/,
+			"",
+		),
 	);
 	if (recipeWord || recipeGuess) {
 		const q = n
@@ -527,7 +531,7 @@ export async function runCommand(
 			return {
 				reply: `Вот отличный рецепт: ${r.title}! ${r.time}, ${r.servings} порций, сложность — ${r.difficulty.toLowerCase()}. Приятного аппетита!`,
 				recipe: { id: r.id },
-		};
+			};
 		}
 		if (q) {
 			return {

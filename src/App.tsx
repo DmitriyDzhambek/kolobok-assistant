@@ -131,7 +131,9 @@ export default function App() {
 				new URLSearchParams(window.location.search).get("recipe");
 			if (p === null) return { open: false };
 			if (!p) return { open: true };
-			return /^[a-z][a-z0-9-]*$/.test(p) ? { open: true, id: p } : { open: true, query: p };
+			return /^[a-z][a-z0-9-]*$/.test(p)
+				? { open: true, id: p }
+				: { open: true, query: p };
 		} catch {
 			return { open: false };
 		}
@@ -457,9 +459,7 @@ export default function App() {
 									key="recipes"
 									initialId={recipeView.id}
 									initialQuery={recipeView.query}
-									onClose={() =>
-										setRecipeView((v) => ({ ...v, open: false }))
-									}
+									onClose={() => setRecipeView((v) => ({ ...v, open: false }))}
 								/>
 							)}
 						</AnimatePresence>
