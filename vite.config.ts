@@ -9,6 +9,7 @@ const backendProxy = {
 	"/backend-api": {
 		target: `http://${process.env.KOLOBOK_MACRO_BACKEND || "127.0.0.1:8765"}`,
 		changeOrigin: true,
+		ws: true, // «живой канал» /ws для статуса связи и авто-реконнекта
 		rewrite: (p: string) => p.replace(/^\/backend-api/, ""),
 	},
 };

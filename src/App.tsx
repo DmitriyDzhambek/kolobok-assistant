@@ -6,6 +6,12 @@ import { MacroPanel } from "./components/MacroPanel";
 import { RecipePanel } from "./components/RecipePanel";
 import { MorningMagic } from "./components/MorningMagic";
 import { ChatPanel } from "./components/ChatPanel";
+import {
+	QuickActions,
+	recipeOfTheDay,
+	type QuickAction,
+} from "./components/QuickActions";
+import { useConnection } from "./net/connection";
 import { initTma } from "./tma";
 import { useMacro } from "./macro/useMacro";
 import { useRecognition } from "./speech/useRecognition";
@@ -140,6 +146,7 @@ export default function App() {
 	});
 	const [input, setInput] = useState("");
 	const [installEvt, setInstallEvt] = useState<any>(null);
+	const [chatAuto, setChatAuto] = useState<string | null>(null);
 	const [tab, setTab] = useState<"main" | "morning" | "chat">(() => {
 		try {
 			const p =
@@ -154,6 +161,9 @@ export default function App() {
 	useEffect(() => {
 		initTma();
 	}, []);
+
+	// Общий «живой канал» с бэкендом стартует сразу (WebSocket + авто-реконнект).
+	useConnection();
 
 	const macro = useMacro();
 	const macroRef = useRef(macro);
@@ -341,6 +351,55 @@ export default function App() {
 
 	const openTasks = tasks.filter((t) => !t.done);
 
+	const todaysRecipe = recipeOfTheDay();
+	const quickActions: QuickAction[] = [
+		{
+			id: "recipe",
+			emoji: "🍲",
+			title: "Рецепт дня",
+			desc: `${todaysRecipe.title} — карточка откроется прямо здесь`,
+			onClick: () => setRecipeView({ open: true, id: todaysRecipe.id }),
+		},
+		{
+			id: "miniapps",
+			emoji: "💰",
+			title: "Проверить Mini Apps",
+			desc: "Спросить Колобка, как заработать сегодня",
+			onClick: () => {
+				setTab("chat");
+				setChatAuto("Как заработать на Mini Apps?");
+			},
+		},
+		{
+			id: "macro",
+			emoji: "🖱️",
+			title: "Быстрый макрос",
+			desc: "Записать клики и повторить N раз",
+			onClick: () => setShowMacro((s) => !s),
+		},
+		{
+			id: "morning",
+			emoji: "✨",
+			title: "Магия утра",
+			desc: "Зажечь кристаллы привычек",
+			onClick: () => setTab("morning"),
+		},
+		{
+			id: "timer",
+			emoji: "⏱️",
+			title: "Таймер 5 минут",
+			desc: "Засеку и напомню голосом",
+			onClick: () => void processText("таймер на 5 минут"),
+		},
+		{
+			id: "weather",
+			emoji: "🌤️",
+			title: "Погода сейчас",
+			desc: "Что надеть на прогулку",
+			onClick: () => void processText("погода"),
+		},
+	];
+
 	return (
 		<div className="app">
 			<Background />
@@ -445,6 +504,8 @@ export default function App() {
 							))}
 						</div>
 
+						<QuickActions actions={quickActions} />
+
 						{showMacro && (
 							<MacroPanel
 								status={macro.status}
@@ -509,7 +570,12 @@ export default function App() {
 						exit={{ opacity: 0, y: -10 }}
 						transition={{ duration: 0.18 }}
 					>
-						<ChatPanel muted={muted} speak={speak} />
+						<ChatPanel
+							muted={muted}
+							speak={speak}
+							autoAsk={chatAuto}
+							onAutoAsked={() => setChatAuto(null)}
+						/>
 					</motion.div>
 				)}
 			</AnimatePresence>

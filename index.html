@@ -15,13 +15,24 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Шрифты грузим неблокирующе: без сети страница всё равно рисуется сразу -->
     <link
       href="https://fonts.googleapis.com/css2?family=Marck+Script&family=Neucha&display=swap"
       rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
     />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Marck+Script&family=Neucha&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
     <title>Ты отдыхай, а я для тебя заработаю — Колобок</title>
-    <!-- Telegram Mini App SDK: внутри Telegram даёт window.Telegram.WebApp -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Telegram Mini App SDK: внутри Telegram даёт window.Telegram.WebApp.
+         async — чтобы недоступный telegram.org никогда не блокировал отрисовку;
+         tma.ts сам дождётся SDK после загрузки. -->
+    <script src="https://telegram.org/js/telegram-web-app.js" async></script>
   </head>
   <body>
     <div id="root"></div>

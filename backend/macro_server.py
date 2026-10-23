@@ -9,6 +9,8 @@ FastAPI-бэкенд, который:
   * POST /api/stop        — остановить любую операцию;
   * GET  /api/status      — текущее состояние для фронтенда;
   * GET  /api/macro       — метаданные последнего макроса;
+  * WS   /ws              — «живой канал»: hello/pong для статуса связи и авто-реконнекта
+                            фронтенда (useConnection каждые 5 с пытается вернуться);
   * POST /api/chat        — диалог с Колобком (LLM по ключу OPENAI_API_KEY/GEMINI_API_KEY
                             или встроенный офлайн-характер без ключей);
   * GET/POST/PATCH/DELETE /api/habits… — «Магия утра»: привычки, отметки дня, стрики;
@@ -40,7 +42,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -349,6 +351,29 @@ class Engine:
 
 engine = Engine()
 
+
+class Hub:
+    """Клиенты «живого канала» /ws — для статуса связи на фронтенде."""
+
+    def __init__(self) -> None:
+        self._clients: set = set()
+        self._lock = threading.Lock()
+
+    def add(self, ws: WebSocket) -> None:
+        with self._lock:
+            self._clients.add(ws)
+
+    def remove(self, ws: WebSocket) -> None:
+        with self._lock:
+            self._clients.discard(ws)
+
+    def count(self) -> int:
+        with self._lock:
+            return len(self._clients)
+
+
+hub = Hub()
+
 app = FastAPI(title="Колобок — макросы, привычки и LLM-чат", version="1.1.0")
 
 # «Мозги» и «Магия утра» живут в отдельном роутере (habits_api.py).
@@ -402,7 +427,7 @@ def root() -> Dict[str, Any]:
             "/api/status", "/api/record", "/api/record/stop",
             "/api/play", "/api/stop", "/api/macro",
             "/api/chat", "/api/habits", "/api/habits/{id}/log",
-            "/api/morning/motivation",
+            "/api/morning/motivation", "/ws",
         ],
         "docs": "/docs",
     }
@@ -410,7 +435,34 @@ def root() -> Dict[str, Any]:
 
 @app.get("/api/status")
 def api_status() -> Dict[str, Any]:
-    return engine.status()
+    st = engine.status()
+    st["ws_clients"] = hub.count()
+    return st
+
+
+@app.websocket("/ws")
+async def ws_link(ws: WebSocket) -> None:
+    """Живой канал связи: при подключении шлём hello с состоянием макроса,
+    на 'ping' отвечаем 'pong'. Фронтенд по этому каналу определяет
+    online/offline и сам переподключается каждые 5 секунд."""
+    await ws.accept()
+    hub.add(ws)
+    try:
+        await ws.send_json(
+            {"type": "hello", "macro_state": engine.status()["state"], "ts": time.time()}
+        )
+        while True:
+            data = await ws.receive_text()
+            if data.strip() in ("", "ping"):
+                await ws.send_json(
+                    {"type": "pong", "macro_state": engine.status()["state"], "ts": time.time()}
+                )
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        pass
+    finally:
+        hub.remove(ws)
 
 
 @app.get("/api/macro")

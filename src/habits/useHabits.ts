@@ -1,49 +1,79 @@
-import { useCallback, useEffect, useState } from "react";
-import { apiFetch, friendlyApiError } from "../api/client";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { apiFetch, isNetworkError } from "../api/client";
+import { useConnection } from "../net/connection";
+import {
+	localAdd,
+	localHabitsView,
+	localMark,
+	localMotivation,
+	localRemove,
+	type Habit,
+} from "./localStore";
 
-export type Habit = {
-	id: string;
-	title: string;
-	icon: string;
-	created_at?: string;
-	sort_order?: number;
-	archived?: boolean;
-	/** Отметка сегодняшнего дня: выполнено / пропущено / нет отметки. */
-	today: "done" | "skipped" | null;
-	/** Текущая цепочка дней подряд. */
-	streak: number;
-	/** Рекорд цепочки. */
-	best_streak: number;
-	/** Последние 7 дней (6 дней назад … сегодня) — для «цепочки звёзд». */
-	week: boolean[];
-};
+export type { Habit };
 
+export type HabitsMode = "server" | "local";
+
+/** «Магия утра»: привычки с сервера, а при потере связи — из localStorage.
+ * Пользователь никогда не видит технических ошибок: сеть пропадает —
+ * включается «режим тишины» (mode="local"), связь вернулась — снова сервер. */
 export function useHabits() {
-	const [habits, setHabits] = useState<Habit[]>([]);
-	const [today, setToday] = useState("");
-	/** null — ещё не проверяли; true — бэкенд на связи; false — не запущен. */
-	const [online, setOnline] = useState<boolean | null>(null);
+	const conn = useConnection();
+	/** null — ещё подключаемся; true — на связи; false — режим тишины. */
+	const online = conn === "online" ? true : conn === "offline" ? false : null;
+
+	const [serverHabits, setServerHabits] = useState<Habit[] | null>(null);
+	const [serverToday, setServerToday] = useState("");
 	const [lastError, setLastError] = useState<string | null>(null);
 	const [motivation, setMotivation] = useState<string | null>(null);
+	const [localTick, setLocalTick] = useState(0);
 
 	const load = useCallback(async () => {
 		try {
 			const d = await apiFetch("/api/habits", undefined, 5000);
-			setHabits(Array.isArray(d?.habits) ? d.habits : []);
-			setToday(String(d?.today ?? ""));
-			setOnline(true);
+			setServerHabits(Array.isArray(d?.habits) ? d.habits : []);
+			setServerToday(String(d?.today ?? ""));
 			setLastError(null);
 		} catch (e) {
-			setOnline(false);
-			setLastError(friendlyApiError(e));
+			// Сеть пропала — молча переключаемся на локальные кристаллы.
+			if (!isNetworkError(e)) setLastError(String((e as Error)?.message ?? e));
 		}
 	}, []);
 
 	useEffect(() => {
-		void load();
-	}, [load]);
+		if (conn === "online") void load();
+	}, [conn, load]);
+
+	const local = useMemo(
+		() => (online === true ? null : localHabitsView()),
+		// localTick пересчитывает локальное представление после изменений
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[online, localTick],
+	);
+	const bumpLocal = () => setLocalTick((t) => t + 1);
+
+	const mode: HabitsMode =
+		online === true && serverHabits !== null ? "server" : "local";
+	const habits =
+		mode === "server" ? (serverHabits ?? []) : (local?.habits ?? []);
+	const today = mode === "server" ? serverToday : (local?.today ?? "");
+
+	const allDoneNow = (): boolean => {
+		const list = mode === "server" ? habits : localHabitsView().habits;
+		return list.length > 0 && list.every((x) => x.today === "done");
+	};
+	const doneTitles = (): string[] =>
+		(mode === "server" ? habits : localHabitsView().habits)
+			.filter((x) => x.today === "done")
+			.map((x) => x.title);
 
 	const add = async (title: string, icon: string): Promise<string | null> => {
+		if (mode === "local") {
+			const err = localAdd(title, icon);
+			bumpLocal();
+			if (!err && allDoneNow()) setMotivation(localMotivation(doneTitles()));
+			return err;
+		}
 		try {
 			await apiFetch("/api/habits", {
 				method: "POST",
@@ -53,7 +83,13 @@ export function useHabits() {
 			await load();
 			return null;
 		} catch (e) {
-			const m = friendlyApiError(e);
+			if (isNetworkError(e)) {
+				// связь пропала прямо во время запроса — сохраняем локально
+				const err = localAdd(title, icon);
+				bumpLocal();
+				return err;
+			}
+			const m = String((e as Error)?.message ?? e);
 			setLastError(m);
 			return m;
 		}
@@ -63,6 +99,13 @@ export function useHabits() {
 		id: string,
 		status: "done" | "skipped" | "clear",
 	): Promise<string | null> => {
+		if (mode === "local") {
+			localMark(id, status);
+			bumpLocal();
+			if (status === "done" && allDoneNow())
+				setMotivation(localMotivation(doneTitles()));
+			return null;
+		}
 		try {
 			const r = await apiFetch(`/api/habits/${id}/log`, {
 				method: "POST",
@@ -73,32 +116,54 @@ export function useHabits() {
 			await load();
 			return null;
 		} catch (e) {
-			const m = friendlyApiError(e);
+			if (isNetworkError(e)) {
+				localMark(id, status);
+				bumpLocal();
+				if (status === "done" && allDoneNow())
+					setMotivation(localMotivation(doneTitles()));
+				return null;
+			}
+			const m = String((e as Error)?.message ?? e);
 			setLastError(m);
 			return m;
 		}
 	};
 
 	const remove = async (id: string): Promise<string | null> => {
+		if (mode === "local") {
+			localRemove(id);
+			bumpLocal();
+			return null;
+		}
 		try {
 			await apiFetch(`/api/habits/${id}`, { method: "DELETE" });
 			setLastError(null);
 			await load();
 			return null;
 		} catch (e) {
-			const m = friendlyApiError(e);
+			if (isNetworkError(e)) {
+				localRemove(id);
+				bumpLocal();
+				return null;
+			}
+			const m = String((e as Error)?.message ?? e);
 			setLastError(m);
 			return m;
 		}
 	};
 
 	const askMotivation = async (): Promise<void> => {
+		if (mode === "local") {
+			setMotivation(localMotivation(doneTitles()));
+			return;
+		}
 		try {
 			const r = await apiFetch("/api/morning/motivation", { method: "POST" });
 			if (r?.reply) setMotivation(String(r.reply));
 			setLastError(null);
 		} catch (e) {
-			setLastError(friendlyApiError(e));
+			if (isNetworkError(e)) setMotivation(localMotivation(doneTitles()));
+			else setLastError(String((e as Error)?.message ?? e));
 		}
 	};
 
@@ -106,6 +171,7 @@ export function useHabits() {
 		habits,
 		today,
 		online,
+		mode,
 		lastError,
 		motivation,
 		add,

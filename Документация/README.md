@@ -199,3 +199,49 @@ cd backend && start_backend.bat   # или: pip install -r requirements.txt && p
 - [ ] Публикация по HTTPS — выполняется агентом после проверки превью.
 - [ ] Голос (микрофон и озвучка) проверяется только в браузере пользователя: Web Speech API требует
   HTTPS (или localhost) и Chrome/Edge; в серверном скриншоте недоступен.
+
+## Этап 3: UX связи («Колобок просыпается», режим тишины) + редизайн
+
+- [x] Единый менеджер связи `src/net/connection.ts` + хук `useConnection()`:
+  состояния `connecting / online / offline`; WebSocket `/ws` (hello/pong) с фоном
+  авто-переподключения каждые 5 с (в «онлайн через HTTP-fallback» — реже, 15 с);
+  HTTP-пинг `/api/status` как fallback, если WS заблокирован прокси; событие
+  `window.online` будит менеджера сразу. Один канал на всё приложение (singleton).
+- [x] Бэкенд: `@app.websocket("/ws")` в `backend/macro_server.py` + счётчик клиентов
+  в `/api/status.ws_clients`. Для uvicorn необходима библиотека `websockets`
+  (добавлена в `backend/requirements.txt`): без неё upgrade отдаёт 404.
+- [x] Никаких технических текстов в UI: `BACKEND_HINT` в `src/api/client.ts` заменён на
+  волшебную фразу; MacroPanel в офлайне показывает «Режим тишины… кнопки проснутся сами».
+- [x] Чат: спящий Колобок + пульс-текст «Колобок просыпается и настраивает связь...»
+  во время `connecting`; при `offline` — заметка «Ой, кажется, я потерял связь с
+  волшебным лесом (сервером)…», ввод и микрофон полупрозрачны и неактивны;
+  при возврате связи — «Ура! Я снова с тобой на связи!». Аватар Колобка у сообщений,
+  три пульсирующие точки при ответе.
+- [x] «Магия утра» без бэкенда: `src/habits/localStore.ts` (localStorage, формат и
+  логика стриков один в один с серверной), `useHabits` сам маршрутизирует
+  server/local по состоянию связи; заметка «Режим тишины» вместо ошибок;
+  золотой прогресс-бар утра, вспышка «Выполнено! +1 к продуктивности», крупные кристаллы.
+- [x] Редизайн главного экрана: `src/components/QuickActions.tsx` — сетка крупных
+  стеклянных карточек (≥104px, blur(10px), золотая обводка hover, scale-tap, fade/slide
+  через framer-motion): «Рецепт дня», «Проверить Mini Apps» (авто-вопрос в чат),
+  «Быстрый макрос», «Магия утра», «Таймер 5 минут», «Погода сейчас». Без горизонтального
+  скролла, safe-area учтён.
+- [x] index.html: Telegram SDK и Google Fonts больше не блокируют отрисовку
+  (`async` / `media=print onload`); `src/tma.ts` дожидается async-SDK до 3 с.
+  Причина: синхронный `<script src="https://telegram.org/...">` в head оставлял страницу
+  пустой в средах без внешней сети (поймано серверным скриншотом).
+- Проверено агентом: backend-тесты (38 + 29) OK; tsc OK; engine-smoke OK; SSR 14/14 OK
+  (включая «no technical hints in UI»); `npm run build` OK; WS E2E через Vite-прокси
+  (hello→pong) OK; скриншоты promto_preview: главный экран с карточками, чат и
+  «Магия утра» в режиме тишины (внешний edge-прокси Promto не проксирует /backend-api,
+  поэтому там корректно показан офлайн-UX; на localhost пользователя канал живой).
+
+## Деплой: Vercel (Mini App)
+
+- `vercel.json`: framework `vite`, `npm run build`, output `dist` — авто-детект Vercel.
+- Роутинг приложения — query-параметры (`?tab=`, `?recipe=`), rewrite не нужны.
+- Env для продакшена: `VITE_MACRO_API_URL=https://<туннель>` (публичный HTTPS/WSS-адрес
+  бэкенда пользователя: Cloudflare Tunnel/ngrok), `VITE_TG_BOT_USERNAME`.
+  Без них сборка ходит на `http://localhost:8765` — режим «домашнего компьютера».
+- Деплой выполняется пушем в `main` (если проект Vercel импортирован из GitHub)
+  либо через Vercel CLI/дашборд пользователя; агент проверяет публичный URL скриншотом.

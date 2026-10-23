@@ -18,19 +18,34 @@ export function tgWebApp(): any | null {
 export function initTma(): void {
 	if (inited || typeof window === "undefined") return;
 	inited = true;
-	try {
-		const tg = tgWebApp();
-		if (tg) {
-			tg.ready?.();
-			tg.expand?.();
-			// Подсказка браузеру Telegram о тёмной теме приложения.
-			try {
-				document.documentElement.dataset.tgTheme = tg.colorScheme || "dark";
-			} catch {
-				/* noop */
+	const apply = () => {
+		try {
+			const tg = tgWebApp();
+			if (tg) {
+				tg.ready?.();
+				tg.expand?.();
+				// Подсказка браузеру Telegram о тёмной теме приложения.
+				try {
+					document.documentElement.dataset.tgTheme = tg.colorScheme || "dark";
+				} catch {
+					/* noop */
+				}
 			}
+		} catch {
+			/* не в Telegram — обычный режим */
 		}
-	} catch {
-		/* не в Telegram — обычный режим */
+	};
+	// SDK подключён тегом async: если он ещё не доехал — коротко подождём.
+	if (tgWebApp()) {
+		apply();
+		return;
 	}
+	let tries = 0;
+	const timer = setInterval(() => {
+		tries += 1;
+		if (tgWebApp() || tries >= 10) {
+			clearInterval(timer);
+			apply();
+		}
+	}, 300);
 }

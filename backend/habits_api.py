@@ -19,9 +19,10 @@ import re
 from datetime import date
 from typing import Any, Dict, List, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
 
+import chat_store
 import db
 import llm
 from tg_auth import require_tg_user
@@ -76,9 +77,36 @@ def _one_view(habit_id: str) -> Dict[str, Any]:
 # ---------------- «Мозги»: LLM-чат ----------------
 
 @habits_router.post("/api/chat")
-async def api_chat(req: ChatRequest) -> Dict[str, Any]:
-    history = [m.model_dump() for m in req.messages]
-    return await llm.chat(history)
+async def api_chat(
+    req: ChatRequest,
+    x_tg_init_data: Optional[str] = Header(default=None),
+) -> Dict[str, Any]:
+    """Диалог с памятью: профиль из initData Telegram (или 'local'),
+    каждое сообщение сохраняется в chat_history, в LLM уходит контекст
+    из последних 10 сообщений этого пользователя (не только последнее)."""
+    tg_user = require_tg_user(x_tg_init_data)  # 403, если токен бота задан и проверка не пройдена
+    profile = chat_store.remember_user(tg_user)
+
+    client_hist = [
+        {"role": m.role if m.role != "system" else "user", "content": m.content}
+        for m in req.messages
+    ]
+    last_user = next((m for m in reversed(client_hist) if m["role"] == "user"), None)
+    if last_user:
+        chat_store.remember_message(tg_user, "user", last_user["content"])
+
+    memory = chat_store.memory_for(tg_user, limit=10)
+    if len(memory) < 2:
+        # Первый запуск (БД пустая) — берём историю, присланную клиентом.
+        memory = [m for m in client_hist if m["role"] in ("user", "assistant")][-10:]
+
+    result = await llm.chat(memory)
+    chat_store.remember_message(tg_user, "assistant", str(result.get("reply", "")))
+    return {
+        **result,
+        "user": {"id": profile["id"], "username": profile.get("username")},
+        "memory": len(memory),
+    }
 
 
 @habits_router.post("/api/morning/motivation")

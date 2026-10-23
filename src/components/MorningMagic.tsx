@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AddHabit } from "./AddHabit";
 import { useHabits } from "../habits/useHabits";
@@ -8,11 +9,23 @@ const EXAMPLES: [string, string][] = [
 	["Проверить Mini Apps", "💰"],
 ];
 
-/** Экран «Магия утра»: привычки-созвездия, стрики-цепочки, мотивация Колобка. */
+/** Экран «Магия утра»: привычки-кристаллы, прогресс-бар утра, стрики-цепочки,
+ * анимация выполнения и мотивация Колобка. Работает и с бэкендом, и локально
+ * (режим тишины — localStorage), без технических сообщений пользователю. */
 export function MorningMagic() {
 	const h = useHabits();
-	const allDone =
-		h.habits.length > 0 && h.habits.every((x) => x.today === "done");
+	const [flash, setFlash] = useState<{ id: string; key: number } | null>(null);
+
+	useEffect(() => {
+		if (!flash) return;
+		const t = setTimeout(() => setFlash(null), 1600);
+		return () => clearTimeout(t);
+	}, [flash]);
+
+	const total = h.habits.length;
+	const doneCount = h.habits.filter((x) => x.today === "done").length;
+	const pct = total ? Math.round((doneCount / total) * 100) : 0;
+	const allDone = total > 0 && doneCount === total;
 	const dateRu = h.today
 		? new Date(h.today + "T00:00:00").toLocaleDateString("ru-RU", {
 				day: "numeric",
@@ -20,6 +33,11 @@ export function MorningMagic() {
 				weekday: "short",
 			})
 		: "";
+
+	const markDone = (id: string, currentlyDone: boolean) => {
+		if (!currentlyDone) setFlash({ id, key: Date.now() });
+		void h.mark(id, currentlyDone ? "clear" : "done");
+	};
 
 	return (
 		<div className="morning">
@@ -32,23 +50,46 @@ export function MorningMagic() {
 					}`}
 					title={
 						h.online === null
-							? "проверяю бэкенд…"
+							? "просыпаюсь…"
 							: h.online
-								? "бэкенд на связи"
-								: "бэкенд не запущен"
+								? "на связи"
+								: "режим тишины"
 					}
 				/>
 			</div>
 
 			{h.online === false && (
-				<div className="glass morning-offline">
-					Привычки живут в Python-бэкенде: запусти на компьютере{" "}
-					<code>backend\start_backend.bat</code> (или{" "}
-					<code>python backend/macro_server.py</code>) — и кристаллы зажгутся.
-				</div>
+				<motion.div
+					className="glass morning-quiet"
+					initial={{ opacity: 0, y: -6 }}
+					animate={{ opacity: 1, y: 0 }}
+				>
+					🌙 <b>Режим тишины.</b> Колобок временно без связи с волшебным лесом —
+					но кристаллы живут прямо в твоём браузере: отмечай привычки, прогресс
+					и стрики сохранятся. Как только связь вернётся, всё продолжится само.
+				</motion.div>
 			)}
 			{h.lastError && h.online !== false && (
 				<div className="morning-err">{h.lastError}</div>
+			)}
+
+			{total > 0 && (
+				<div className="glass morning-progress" aria-label="Прогресс утра">
+					<div className="mp-row">
+						<b>Прогресс утра</b>
+						<span>
+							{doneCount}/{total} кристаллов · {pct}%
+						</span>
+					</div>
+					<div className="mp-track">
+						<motion.div
+							className="mp-fill"
+							initial={{ width: 0 }}
+							animate={{ width: `${pct}%` }}
+							transition={{ type: "spring", stiffness: 120, damping: 20 }}
+						/>
+					</div>
+				</div>
 			)}
 
 			<AnimatePresence>
@@ -86,12 +127,26 @@ export function MorningMagic() {
 									: hb.today === "skipped"
 										? "skipped"
 										: ""
-							}`}
-							initial={{ opacity: 0, y: 10 }}
+							} ${flash?.id === hb.id ? "flash-on" : ""}`}
+							initial={{ opacity: 0, y: 12 }}
 							animate={{ opacity: 1, y: 0 }}
 							exit={{ opacity: 0, scale: 0.9 }}
-							transition={{ delay: i * 0.04 }}
+							transition={{ delay: i * 0.05 }}
 						>
+							<AnimatePresence>
+								{flash?.id === hb.id && (
+									<motion.div
+										key={flash.key}
+										className="habit-flash"
+										initial={{ opacity: 0, y: 8, scale: 0.8 }}
+										animate={{ opacity: 1, y: -4, scale: 1 }}
+										exit={{ opacity: 0, y: -20 }}
+										transition={{ duration: 0.35 }}
+									>
+										Выполнено! +1 к продуктивности
+									</motion.div>
+								)}
+							</AnimatePresence>
 							<button
 								className="habit-x"
 								title="Удалить привычку"
@@ -118,9 +173,7 @@ export function MorningMagic() {
 									whileTap={{ scale: 0.88 }}
 									className={hb.today === "done" ? "on" : ""}
 									title={hb.today === "done" ? "Снять отметку" : "Выполнено!"}
-									onClick={() =>
-										void h.mark(hb.id, hb.today === "done" ? "clear" : "done")
-									}
+									onClick={() => markDone(hb.id, hb.today === "done")}
 								>
 									✓
 								</motion.button>
@@ -147,7 +200,7 @@ export function MorningMagic() {
 				</AnimatePresence>
 			</div>
 
-			{h.habits.length === 0 && h.online !== false && (
+			{h.habits.length === 0 && (
 				<div className="glass morning-empty">
 					Созвездие пока пустое. Добавь первый утренний ритуал — например:
 					<div className="morning-examples">

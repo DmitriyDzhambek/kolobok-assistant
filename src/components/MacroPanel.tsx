@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { MacroCtl, MacroStatus } from "../macro/useMacro";
 
 const STATE_TXT: Record<string, string> = {
-	offline: "Бэкенд не запущен",
+	offline: "Спит (режим тишины)",
 	idle: "Готов к записи",
 	recording: "Идёт запись… стоп: F8 или ESC",
 	stopping: "Останавливаю запись…",
@@ -50,10 +50,8 @@ export function MacroPanel({
 				</div>
 			) : offline ? (
 				<div className="macro-info macro-warn">
-					Запустите бэкенд на компьютере:{" "}
-					<code>python backend/macro_server.py</code> (или двойной клик по{" "}
-					<code>backend\start_backend.bat</code>) — инструкция в{" "}
-					КАК-ЗАПУСТИТЬ-НА-WINDOWS.md
+					🌙 Режим тишины: макрос спит. Как только Колобок снова поймает связь с
+					волшебным лесом, кнопки проснутся сами — ничего нажимать не нужно.
 				</div>
 			) : (
 				<div className="macro-info">Макрос ещё не записан</div>

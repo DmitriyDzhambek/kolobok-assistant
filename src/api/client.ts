@@ -66,11 +66,17 @@ export async function apiFetch(
 	}
 }
 
+/** «Волшебная» заглушка вместо технических команд: обычные пользователи
+ * не должны видеть пути к файлам и инструкции по запуску бэкенда. */
 export const BACKEND_HINT =
-	"Бэкенд Колобка не отвечает. Запусти на компьютере backend\\start_backend.bat (или python backend/macro_server.py).";
+	"Ой, кажется, я потерял связь с волшебным лесом (сервером). Но ты не расстраивайся! Я уже чиню свои невидимые шестеренки. Попробуй написать мне чуть позже.";
 
 export function friendlyApiError(e: unknown): string {
 	if (e instanceof TypeError || (e as any)?.name === "AbortError")
 		return BACKEND_HINT;
 	return e instanceof Error ? e.message : String(e);
+}
+
+export function isNetworkError(e: unknown): boolean {
+	return e instanceof TypeError || (e as any)?.name === "AbortError";
 }

@@ -1382,3 +1382,139 @@ body {
 	.rp-name { font-size: 20px; }
 	.rp-badge { display: none; }
 }
+
+/* ============ Редизайн: быстрые действия, «Магия утра», чат ============ */
+
+/* Быстрые действия — сетка крупных стеклянных карточек (без горизонтального скролла) */
+.quick { width: 100%; margin-top: 12px; }
+.quick-title {
+	font-size: 12px; font-weight: 800; letter-spacing: 1.2px;
+	text-transform: uppercase; color: #ffd76a; margin: 2px 2px 8px;
+	opacity: 0.9;
+}
+.quick-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+	gap: 10px;
+}
+.quick-card {
+	display: flex; align-items: center; gap: 12px; text-align: left;
+	min-height: 104px; padding: 14px; border-radius: 18px; cursor: pointer;
+	color: #eaf1ff; font: inherit;
+	background: rgba(255, 255, 255, 0.06);
+	backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+	border: 1px solid rgba(160, 140, 255, 0.28);
+	transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.quick-card:hover, .quick-card:focus-visible {
+	border-color: rgba(255, 215, 102, 0.75);
+	box-shadow: 0 0 18px rgba(255, 200, 60, 0.22);
+	background: rgba(255, 215, 102, 0.07);
+	outline: none;
+}
+.qc-ico {
+	flex: none; width: 52px; height: 52px; border-radius: 16px;
+	display: grid; place-items: center; font-size: 27px;
+	background: radial-gradient(circle at 35% 30%, rgba(255, 215, 102, 0.25), rgba(255, 215, 102, 0.05));
+	border: 1px solid rgba(255, 215, 102, 0.4);
+}
+.qc-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.qc-title { font-weight: 800; font-size: 15px; }
+.qc-desc { font-size: 12px; color: #9fb0e0; line-height: 1.35; }
+.qc-go { flex: none; color: #ffd76a; font-size: 18px; opacity: 0.7; }
+
+/* «Магия утра»: прогресс-бар — светящаяся золотая линия */
+.morning-progress { margin-top: 10px; padding: 10px 14px; border-radius: 14px; }
+.mp-row {
+	display: flex; justify-content: space-between; align-items: baseline;
+	font-size: 13px; color: #cdd6f6; margin-bottom: 7px; gap: 8px;
+}
+.mp-row b { color: #ffd76a; letter-spacing: 0.4px; }
+.mp-track {
+	height: 8px; border-radius: 99px; overflow: hidden;
+	background: rgba(255, 255, 255, 0.08);
+}
+.mp-fill {
+	height: 100%; border-radius: 99px;
+	background: linear-gradient(90deg, #ffe9a8, #ffd76a 40%, #ffb347);
+	box-shadow: 0 0 12px rgba(255, 200, 60, 0.8);
+}
+
+/* Режим тишины в «Магии утра» — мягкая заметка вместо технической ошибки */
+.morning-quiet {
+	margin-top: 10px; padding: 10px 14px; border-radius: 14px;
+	font-size: 13px; line-height: 1.5; color: #cdd6f6;
+	border: 1px solid rgba(160, 140, 255, 0.25);
+}
+
+/* Крупные кристаллы-привычки + вспышка выполнения */
+.habit { min-height: 150px; transition: box-shadow 0.25s, border-color 0.25s; }
+.habit.flash-on {
+	border-color: rgba(255, 215, 102, 0.85);
+	box-shadow: 0 0 30px rgba(255, 215, 102, 0.5), 0 0 64px rgba(255, 180, 60, 0.22);
+}
+.habit-flash {
+	position: absolute; left: 50%; top: -8px; transform: translateX(-50%);
+	z-index: 4; white-space: nowrap; padding: 5px 12px; border-radius: 999px;
+	font-size: 12px; font-weight: 800; color: #2a1d05;
+	background: linear-gradient(180deg, #ffe9a8, #ffd05e);
+	box-shadow: 0 0 18px rgba(255, 200, 60, 0.7);
+	pointer-events: none;
+}
+.habit-crystal { width: 72px; height: 72px; font-size: 34px; }
+.habit-week .star.on { text-shadow: 0 0 8px rgba(255, 215, 102, 0.9); }
+
+/* Чат: спящий Колобок с золотыми звёздочками (состояние подключения) */
+.chat-wake {
+	display: flex; flex-direction: column; align-items: center; gap: 8px;
+	padding: 10px 8px 12px;
+}
+.wake-kolobok { position: relative; width: 72px; height: 72px; }
+.wake-kolobok svg {
+	position: absolute; inset: 8px;
+	animation: wake-breathe 2.4s ease-in-out infinite;
+}
+@keyframes wake-breathe {
+	0%, 100% { transform: scale(1) rotate(-2deg); }
+	50% { transform: scale(1.06) rotate(2deg); }
+}
+.wake-star {
+	position: absolute; color: #ffd76a; font-size: 15px;
+	animation: wake-twinkle 1.6s ease-in-out infinite;
+	text-shadow: 0 0 10px rgba(255, 200, 60, 0.9);
+}
+.wake-star.s1 { top: -2px; left: 6px; }
+.wake-star.s2 { top: 12px; right: -4px; animation-delay: 0.5s; }
+.wake-star.s3 { bottom: 2px; left: -6px; animation-delay: 1s; }
+@keyframes wake-twinkle {
+	0%, 100% { opacity: 0.25; transform: scale(0.7) rotate(0deg); }
+	50% { opacity: 1; transform: scale(1.15) rotate(20deg); }
+}
+.wake-text { font-size: 13px; color: #cdd6f6; text-align: center; }
+
+/* Чат: волшебные заметки (offline/реконнект) — мягче обычных сообщений */
+.msg-note .msg-txt {
+	background: rgba(255, 215, 102, 0.1);
+	border: 1px dashed rgba(255, 215, 102, 0.45);
+	color: #f4e7c3;
+	font-style: italic;
+}
+.chat-quiet .chat-row input { opacity: 0.6; }
+.chat-mic:disabled, .chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Макропанель: неактивные кнопки остаются на экране, но полупрозрачные */
+.macro-panel .macro-btn:disabled { opacity: 0.45; }
+
+/* Мобильные правила: без горизонтального скролла, с учётом safe-area */
+html, body, #root { overflow-x: hidden; max-width: 100vw; }
+.hdr { padding-top: calc(6px + env(safe-area-inset-top, 0px)); }
+.toolbar {
+	padding-left: max(4px, env(safe-area-inset-left, 0px));
+	padding-right: max(4px, env(safe-area-inset-right, 0px));
+	padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
+}
+@media (max-width: 560px) {
+	.quick-grid { grid-template-columns: 1fr; }
+	.quick-card { min-height: 92px; }
+	.habits-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}

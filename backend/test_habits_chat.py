@@ -23,15 +23,19 @@ from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parent
 TMP = Path("/tmp/kolobok-habits-test.json")
-if TMP.exists():
-    TMP.unlink()
+CHAT_TMP = Path("/tmp/kolobok-chat-test.json")
+for p in (TMP, CHAT_TMP):
+    if p.exists():
+        p.unlink()
 
 os.environ["KOLOBOK_HABITS_FILE"] = str(TMP)
+os.environ["KOLOBOK_CHAT_FILE"] = str(CHAT_TMP)
 for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "DATABASE_URL",
           "KOLOBOK_TG_BOT_TOKEN", "KOLOBOK_ALLOWED_TG_IDS"):
     os.environ.pop(k, None)
 
 sys.path.insert(0, str(BACKEND))
+import chat_store  # noqa: E402
 import macro_server  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -119,7 +123,10 @@ j = r.json()
 check("chat source offline", j.get("source") == "offline", str(j.get("source")))
 check("chat reply non-empty", len(j.get("reply", "")) > 20)
 
-# каждое 4-е пользовательское сообщение — любознательный вопрос
+# каждое 4-е пользовательское сообщение — любознательный вопрос.
+# Память теперь серверная: сбрасываем историю, чтобы счётчик был детерминирован.
+CHAT_TMP.unlink(missing_ok=True)
+chat_store.reset_chat_repo()
 hist = []
 q_seen = False
 for i in range(4):
@@ -134,6 +141,28 @@ r = client.post("/api/chat", json={"messages": []})
 check("chat empty -> 422", r.status_code == 422, str(r.status_code))
 r = client.post("/api/chat", json={"messages": [{"role": "user", "content": ""}]})
 check("chat blank content -> 422", r.status_code == 422, str(r.status_code))
+
+# ---------- память диалога: Users + ChatHistory ----------
+r = client.post("/api/chat", json={"messages": [{"role": "user", "content": "запомни число 42"}]})
+j = r.json()
+check("chat profile local", j.get("user", {}).get("id") == "local", r.text)
+check("chat memory counter", isinstance(j.get("memory"), int) and j["memory"] >= 1, r.text)
+
+mem = chat_store.memory_for(None, limit=50)
+contents = [m["content"] for m in mem]
+check("history stores user msg", "запомни число 42" in contents, str(contents[-3:]))
+check("history stores assistant reply", len(mem) >= 2 and mem[-1]["role"] == "assistant")
+check("chat file persisted", CHAT_TMP.exists() and "запомни число 42" in CHAT_TMP.read_text(encoding="utf-8"))
+
+# дедупликация: повтор того же сообщения не плодит копию (добавится только ответ)
+before = len(chat_store.memory_for(None, limit=50))
+r = client.post("/api/chat", json={"messages": [{"role": "user", "content": "запомни число 42"}]})
+after = len(chat_store.memory_for(None, limit=50))
+check("dedupe repeated message", r.status_code == 200 and after == before + 1, f"{before}->{after}")
+
+# контекст для LLM ограничен последними 10 сообщениями
+r = client.post("/api/chat", json={"messages": [{"role": "user", "content": "сколько будет 2+2?"}]})
+check("memory limit 10", r.json().get("memory", 99) <= 10, r.text)
 
 # ---------- безопасность: initData Telegram ----------
 BOT = "123456:test-bot-token"
@@ -173,6 +202,18 @@ try:
     r = client.post("/api/chat", json={"messages": [{"role": "user", "content": "привет"}]},
                     headers={"X-TG-Init-Data": good})
     check("auth on: chat allowed for owner", r.status_code == 200, str(r.status_code))
+
+    # профили не смешиваются: у владельца Telegram своя история, у local — своя
+    r = client.post("/api/chat",
+                    json={"messages": [{"role": "user", "content": "личный секрет владельца"}]},
+                    headers={"X-TG-Init-Data": good})
+    jj = r.json()
+    check("tg profile id", jj.get("user", {}).get("id") == f"tg:{UID}", r.text)
+    mem_tg = chat_store.memory_for({"id": UID}, limit=50)
+    mem_loc = chat_store.memory_for(None, limit=50)
+    check("history separated per user",
+          any("личный секрет" in m["content"] for m in mem_tg)
+          and not any("личный секрет" in m["content"] for m in mem_loc))
 finally:
     os.environ.pop("KOLOBOK_TG_BOT_TOKEN", None)
     os.environ.pop("KOLOBOK_ALLOWED_TG_IDS", None)
@@ -180,12 +221,21 @@ finally:
 r = client.get("/api/habits")
 check("auth off again: open", r.status_code == 200, str(r.status_code))
 
-# статус макрос-движка не сломан новым роутером
+# статус макрос-движка не сломан новым роутером + живой канал /ws
 r = client.get("/api/status")
 check("macro status still ok", r.status_code == 200 and "state" in r.json(), r.text)
+check("status has ws_clients", isinstance(r.json().get("ws_clients"), int), r.text)
+
+with client.websocket_connect("/ws") as ws:
+    hello = ws.receive_json()
+    check("ws hello", hello.get("type") == "hello" and "macro_state" in hello, str(hello))
+    ws.send_text("ping")
+    pong = ws.receive_json()
+    check("ws ping->pong", pong.get("type") == "pong", str(pong))
 
 print()
 if fails:
     print("HABITS/CHAT TESTS FAILED:", ", ".join(fails))
     sys.exit(1)
-print("HABITS/CHAT TESTS OK (CRUD, стрики, мотивация, офлайн-LLM, initData-безопасность)")
+print("HABITS/CHAT TESTS OK (CRUD, стрики, мотивация, офлайн-LLM, память чата, "
+      "Users/ChatHistory, initData-безопасность, /ws)")
