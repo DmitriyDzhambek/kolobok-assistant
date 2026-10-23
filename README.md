@@ -12,7 +12,9 @@
 
 ```bash
 npm install
-npm run dev -- --host 0.0.0.0 --port 5175   # dev-сервер
+npm start                                    # самый простой запуск проекта (= npm run dev)
+npm run dev -- --host 0.0.0.0 --port 5175    # dev-сервер с фиксированным портом
+npm run check                                # проверка типов TypeScript
 npm run build                                # production-сборка в dist/
 npm run preview -- --host 0.0.0.0 --port 4173
 node scripts/make-icons.mjs                  # перегенерация PNG-иконок PWA

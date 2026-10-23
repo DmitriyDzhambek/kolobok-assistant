@@ -5,9 +5,12 @@
   "type": "module",
   "description": "Голосовой помощник «Колобок» для рабочего стола Windows 10: «Ты отдыхай, а я для тебя заработаю»",
   "scripts": {
+    "start": "vite",
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "backend": "python backend/macro_server.py",
+    "check": "tsc --noEmit"
   },
   "dependencies": {
     "framer-motion": "^14.6.0",

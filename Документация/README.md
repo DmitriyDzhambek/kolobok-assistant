@@ -27,6 +27,7 @@ framer-motion, палитра космос+золото, мобильная ад
 
 ```bash
 npm install
+npm start                                         # простой запуск (алиас vite dev)
 npm run dev -- --host 0.0.0.0 --port 5175
 npm run build
 npm run preview -- --host 0.0.0.0 --port 4173
