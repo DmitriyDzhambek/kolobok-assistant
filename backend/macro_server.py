@@ -1,4 +1,4 @@
-r"""Колобок — макрос-рекордер (автокликер) для Windows 10.
+r"""Колобок — бэкенд: макрос-рекордер (автокликер) + «Мозги» (LLM) + «Магия утра».
 
 FastAPI-бэкенд, который:
   * POST /api/record      — запускает запись движений мыши, кликов, скроллов и пауз
@@ -8,9 +8,17 @@ FastAPI-бэкенд, который:
                             (стоп — клавиша F9, аварийный стоп — мышь в левый верхний угол экрана);
   * POST /api/stop        — остановить любую операцию;
   * GET  /api/status      — текущее состояние для фронтенда;
-  * GET  /api/macro       — метаданные последнего макроса.
+  * GET  /api/macro       — метаданные последнего макроса;
+  * POST /api/chat        — диалог с Колобком (LLM по ключу OPENAI_API_KEY/GEMINI_API_KEY
+                            или встроенный офлайн-характер без ключей);
+  * GET/POST/PATCH/DELETE /api/habits… — «Магия утра»: привычки, отметки дня, стрики;
+  * POST /api/morning/motivation — мотивирующая фраза после утреннего чек-листа.
 
 Макрос сохраняется в backend/macros/macro.json.
+Привычки: PostgreSQL при DATABASE_URL, иначе backend/data/habits.json (без SQLite —
+правило платформы; подробности и схема — в db.py).
+Безопасность: при KOLOBOK_TG_BOT_TOKEN все эндпоинты требуют initData Telegram
+(см. tg_auth.py); без него сервер локальный и доступен только с этого компьютера.
 
 Запуск на Windows:
     python -m venv .venv
@@ -341,7 +349,12 @@ class Engine:
 
 engine = Engine()
 
-app = FastAPI(title="Колобок — макрос-рекордер", version="1.0.0")
+app = FastAPI(title="Колобок — макросы, привычки и LLM-чат", version="1.1.0")
+
+# «Мозги» и «Магия утра» живут в отдельном роутере (habits_api.py).
+from habits_api import habits_router  # noqa: E402
+
+app.include_router(habits_router)
 
 # Фронтенд Колобка живёт на локальных dev-портах Vite; другие адреса можно
 # добавить переменной окружения KOLOBOK_MACRO_ORIGINS (через запятую).
@@ -360,8 +373,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins or _DEFAULT_ORIGINS,
     allow_credentials=False,
-    allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_headers=["Content-Type", "X-TG-Init-Data"],
 )
 
 
@@ -384,9 +397,13 @@ def _guard(fn, *args, **kwargs):
 @app.get("/")
 def root() -> Dict[str, Any]:
     return {
-        "app": "Колобок — макрос-рекордер",
-        "endpoints": ["/api/status", "/api/record", "/api/record/stop",
-                      "/api/play", "/api/stop", "/api/macro"],
+        "app": "Колобок — макросы, «Магия утра» и LLM-чат",
+        "endpoints": [
+            "/api/status", "/api/record", "/api/record/stop",
+            "/api/play", "/api/stop", "/api/macro",
+            "/api/chat", "/api/habits", "/api/habits/{id}/log",
+            "/api/morning/motivation",
+        ],
         "docs": "/docs",
     }
 
@@ -440,10 +457,12 @@ if __name__ == "__main__":
 
     port = int(os.environ.get("KOLOBOK_MACRO_PORT", "8765"))
     print("=" * 56)
-    print("  Колобок — макрос-рекордер")
+    print("  Колобок — макросы, «Магия утра» и LLM-чат")
     print(f"  Сервер:   http://127.0.0.1:{port}")
     print("  Запись:   POST /api/record (стоп: F8 или ESC)")
     print("  Повтор:   POST /api/play {\"repeat_count\": N} (стоп: F9)")
-    print("  Фронтенд: npm run dev  →  кнопка 🖱 на панели Колобка")
+    print("  Чат:      POST /api/chat (LLM по ключу или офлайн-характер)")
+    print("  Привычки: /api/habits («Магия утра»)")
+    print("  Фронтенд: npm run dev  →  вкладки ✨ и 💬, кнопка 🖱")
     print("=" * 56)
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")

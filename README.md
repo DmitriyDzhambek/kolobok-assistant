@@ -1,8 +1,12 @@
 # Колобок — «Ты отдыхай, а я для тебя заработаю»
 
-Сказочный голосовой помощник для рабочего стола Windows 10: пользователь говорит задачу голосом —
-Колобок выполняет её и отвечает голосом. Образ — Колобок из русской сказки в стиле богатырской
-сказочной магии: ночное небо, звёзды, светлячки, еловый лес, золотая орнаментальная рамка.
+Сказочный голосовой помощник для рабочего стола Windows 10 и Telegram Mini App:
+пользователь говорит задачу голосом — Колобок выполняет её и отвечает голосом.
+Образ — Колобок из русской сказки в стиле богатырской сказочной магии: ночное небо,
+звёзды, светлячки, еловый лес, золотая орнаментальная рамка.
+
+Три вкладки: 🌙 Колобок (голосовые команды), ✨ Магия утра (привычки-созвездия
+со стриками и мотивацией), 💬 Чат («мозги» — LLM с характером или офлайн-репертуар).
 
 ## Команды запуска
 
@@ -13,11 +17,12 @@ npm run build                                # production-сборка в dist/
 npm run preview -- --host 0.0.0.0 --port 4173
 node scripts/make-icons.mjs                  # перегенерация PNG-иконок PWA
 
-# Автокликер (Python-бэкенд, только на машине с мышью/экраном, например Windows):
+# Автокликер + «Магия утра» + LLM-чат (Python-бэкенд):
 cd backend && python -m venv .venv && .venv/Scripts/activate   # Windows
 pip install -r requirements.txt
 python macro_server.py                        # http://127.0.0.1:8765 (или backend\start_backend.bat)
-python test_macro_server.py                   # тесты логики бэкенда (pynput/pyautogui не нужны)
+python test_macro_server.py                   # тесты макрос-рекордера (29 проверок)
+python test_habits_chat.py                    # тесты привычек/чата/initData (38 проверок)
 ```
 
 ## Что умеет (рабочая версия)
@@ -31,22 +36,41 @@ python test_macro_server.py                   # тесты логики бэке
 - Автокликер (макрос-рекордер для игрового контента, Python-бэкенд): запись движений мыши, кликов,
   скроллов и пауз (стоп — F8/ESC), воспроизведение с repeat_count (стоп — F9 или failsafe-угол экрана),
   кнопка 🖱️ на панели и голосовые команды «записать макрос», «запусти макрос 10 раз», «останови макрос».
+- «Магия утра» — трекер привычек по мотивам Atomic Habits: ритуалы-кристаллы (💧🏃📚…), отметки
+  выполнено/пропущено, стрики (цепочка дней) и рекорды, «цепочка звёзд» за 7 дней, мотивирующая
+  фраза Колобка после полного чек-листа. Хранение: PostgreSQL через `DATABASE_URL` или локальный
+  JSON-файл (без SQLite — правило платформы).
+- «Мозги» — чат с Колобком (`/api/chat`): LLM по ключу `OPENAI_API_KEY` (любой OpenAI-совместимый
+  API) или `GEMINI_API_KEY`, системный промпт с характером (помощь в заработке, мотивация,
+  любознательный вопрос каждые 3–4 сообщения); без ключей — встроенный офлайн-характер.
+- Telegram Mini App: SDK telegram-web-app.js (ready/expand), отправка initData в заголовке
+  X-TG-Init-Data; при `KOLOBOK_TG_BOT_TOKEN` бэкенд криптографически проверяет initData и пускает
+  только владельцев из `KOLOBOK_ALLOWED_TG_IDS` (см. TELEGRAM-MINI-APP.md).
 
 ## Стек
 
-Vite + React + TypeScript; вся основная логика на клиенте (Web Speech API, localStorage, open-meteo API).
-Опциональный локальный бэкенд автокликера: Python + FastAPI + pynput (запись) + pyautogui (воспроизведение),
-только на 127.0.0.1:8765, CORS для localhost-портов Vite; макрос хранится в `backend/macros/macro.json`.
+Vite + React + TypeScript + framer-motion; голос и задачи — на клиенте (Web Speech API, localStorage,
+open-meteo API). Локальный бэкенд: Python + FastAPI; pynput (запись мыши) + pyautogui (воспроизведение),
+httpx (LLM), psycopg (PostgreSQL, опционально). Только 127.0.0.1:8765; в dev-режиме фронтенд ходит
+в бэкенд same-origin через Vite-прокси `/backend-api` (настройка `vite.config.ts`).
 
 ## Структура
 
 - `src/App.tsx` — сцена, состояние помощника, push-to-talk, чипы задач/таймеров, тулбар, помощь.
 - `src/brain/commands.ts` — движок команд (интенты, таймеры, напоминания, погода, счёт, макросы).
 - `src/speech/useRecognition.ts` / `useSpeech.ts` — распознавание и синтез речи.
-- `src/macro/useMacro.ts` — клиент API бэкенда макросов + опрос статуса.
+- `src/api/client.ts` — общий клиент API бэкенда (прокси в dev, initData-заголовок для Telegram).
+- `src/tma.ts` — инициализация Telegram Mini App (ready/expand).
+- `src/macro/useMacro.ts` — статус и управление макрос-рекордером.
+- `src/habits/useHabits.ts` — привычки, отметки, стрики, мотивация.
 - `src/components/Kolobok.tsx` — анимированный SVG-Колобок (моргание, речь, аура слушания).
 - `src/components/MacroPanel.tsx` — панель автокликера (запись, повторы, статус).
+- `src/components/MorningMagic.tsx` / `AddHabit.tsx` — экран «Магия утра» и форма новой привычки.
+- `src/components/ChatPanel.tsx` — стеклянный чат с Колобком (текст + голос).
 - `src/components/Background.tsx` — волшебная сцена (звёзды, луна, светлячки, лес, орнамент).
-- `backend/macro_server.py` — FastAPI-сервер макрос-рекордера (`/api/record`, `/api/play`, `/api/status`).
-- `backend/test_macro_server.py` — тесты бэкенда с заглушками pynput/pyautogui (29 проверок).
+- `backend/macro_server.py` — FastAPI-сервер: макросы + роутер привычек/чата.
+- `backend/db.py` — хранилище привычек (PostgreSQL через DATABASE_URL или JSON-файл).
+- `backend/llm.py` — «мозги»: OpenAI/Gemini по ключу + офлайн-характер.
+- `backend/tg_auth.py` — проверка initData Telegram (HMAC SHA-256, белый список ID).
+- `backend/test_macro_server.py`, `backend/test_habits_chat.py` — тесты бэкенда (67 проверок).
 - `public/` — manifest, service worker, иконки.

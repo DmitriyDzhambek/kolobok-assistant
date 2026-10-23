@@ -25,9 +25,14 @@ export function MacroPanel({
 	const disabledAll = offline || busyRec || busyPlay;
 
 	return (
-		<div className="macro-panel" aria-label="Автокликер: запись и повтор макросов">
+		<div
+			className="macro-panel"
+			aria-label="Автокликер: запись и повтор макросов"
+		>
 			<div className="macro-head">
-				<span className="macro-ico" aria-hidden>🖱️</span>
+				<span className="macro-ico" aria-hidden>
+					🖱️
+				</span>
 				<b>Автокликер-макрос</b>
 				<span className={`macro-dot st-${status.state}`} aria-hidden />
 				<span className="macro-state">
@@ -45,8 +50,9 @@ export function MacroPanel({
 				</div>
 			) : offline ? (
 				<div className="macro-info macro-warn">
-					Запустите бэкенд на компьютере: <code>python backend/macro_server.py</code>{" "}
-					(или двойной клик по <code>backend\start_backend.bat</code>) — инструкция в{" "}
+					Запустите бэкенд на компьютере:{" "}
+					<code>python backend/macro_server.py</code> (или двойной клик по{" "}
+					<code>backend\start_backend.bat</code>) — инструкция в{" "}
 					КАК-ЗАПУСТИТЬ-НА-WINDOWS.md
 				</div>
 			) : (
@@ -86,9 +92,7 @@ export function MacroPanel({
 				<button
 					className={`macro-btn play ${busyPlay ? "on" : ""}`}
 					disabled={disabledAll || (!busyPlay && !status.macro)}
-					onClick={() =>
-						busyPlay ? void ctl.stop() : void ctl.play(repeat)
-					}
+					onClick={() => (busyPlay ? void ctl.stop() : void ctl.play(repeat))}
 					title="Воспроизвести макрос N раз; экстренный стоп — F9 или мышь в левый верхний угол экрана"
 				>
 					{busyPlay ? "■ Остановить (F9)" : "▶ Запустить"}

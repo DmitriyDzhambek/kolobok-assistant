@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Kolobok } from "./components/Kolobok";
 import { Background } from "./components/Background";
 import { MacroPanel } from "./components/MacroPanel";
+import { MorningMagic } from "./components/MorningMagic";
+import { ChatPanel } from "./components/ChatPanel";
+import { initTma } from "./tma";
 import { useMacro } from "./macro/useMacro";
 import { useRecognition } from "./speech/useRecognition";
 import { useSpeech } from "./speech/useSpeech";
@@ -65,6 +69,8 @@ const HELP_ITEMS: [string, string][] = [
 	["«погода в Твери»", "погода без ключей API"],
 	["«записать макрос» → F8/ESC", "автокликер: запись кликов и движений мыши"],
 	["«запусти макрос 10 раз» → F9 стоп", "повтор записи по кругу — для игрового контента"],
+	["Вкладка «✨ Магия утра»", "привычки-созвездия, стрики и мотивация (нужен бэкенд)"],
+	["Вкладка «💬 Чат»", "разговор с Колобком: LLM по ключу или офлайн-характер"],
 	["«расскажи сказку / шутку / пословицу»", "сказочное настроение"],
 	[
 		"Пробел или кнопка микрофона",
@@ -105,6 +111,20 @@ export default function App() {
 	});
 	const [input, setInput] = useState("");
 	const [installEvt, setInstallEvt] = useState<any>(null);
+	const [tab, setTab] = useState<"main" | "morning" | "chat">(() => {
+		try {
+			const p =
+				typeof window !== "undefined" &&
+				new URLSearchParams(window.location.search).get("tab");
+			return p === "morning" || p === "chat" ? p : "main";
+		} catch {
+			return "main";
+		}
+	});
+
+	useEffect(() => {
+		initTma();
+	}, []);
 
 	const macro = useMacro();
 	const macroRef = useRef(macro);
@@ -303,7 +323,35 @@ export default function App() {
 				)}
 			</header>
 
-			<main className="stage">
+			<nav className="tabs">
+				{(
+					[
+						["main", "🌙 Колобок"],
+						["morning", "✨ Магия утра"],
+						["chat", "💬 Чат"],
+					] as ["main" | "morning" | "chat", string][]
+				).map(([id, label]) => (
+					<motion.button
+						key={id}
+						className={`tab ${tab === id ? "on" : ""}`}
+						onClick={() => setTab(id)}
+						whileTap={{ scale: 0.95 }}
+					>
+						{label}
+					</motion.button>
+				))}
+			</nav>
+
+			<AnimatePresence mode="wait" initial={false}>
+			{tab === "main" && (
+			<motion.main
+				key="main"
+				className="stage"
+				initial={{ opacity: 0, y: 10 }}
+				animate={{ opacity: 1, y: 0 }}
+				exit={{ opacity: 0, y: -10 }}
+				transition={{ duration: 0.18 }}
+			>
 				<Kolobok state={botState} />
 				<div className={`bubble ${botState === "speak" ? "speaking" : ""}`}>
 					<div className="bubble-text">{botText}</div>
@@ -386,7 +434,35 @@ export default function App() {
 						<button type="submit">Отправить</button>
 					</form>
 				)}
-			</main>
+			</motion.main>
+			)}
+
+			{tab === "morning" && (
+				<motion.div
+					key="morning"
+					className="tabpage"
+					initial={{ opacity: 0, y: 10 }}
+					animate={{ opacity: 1, y: 0 }}
+					exit={{ opacity: 0, y: -10 }}
+					transition={{ duration: 0.18 }}
+				>
+					<MorningMagic />
+				</motion.div>
+			)}
+
+			{tab === "chat" && (
+				<motion.div
+					key="chat"
+					className="tabpage"
+					initial={{ opacity: 0, y: 10 }}
+					animate={{ opacity: 1, y: 0 }}
+					exit={{ opacity: 0, y: -10 }}
+					transition={{ duration: 0.18 }}
+				>
+					<ChatPanel muted={muted} speak={speak} />
+				</motion.div>
+			)}
+			</AnimatePresence>
 
 			<footer className="toolbar">
 				<button

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { apiFetch, friendlyApiError } from "../api/client";
 
 /** Состояния макрос-бэкенда (Python FastAPI, backend/macro_server.py). */
 export type MacroState =
@@ -29,45 +30,6 @@ export type MacroCtl = {
 	stop: () => Promise<string | null>;
 };
 
-const DEFAULT_BASE = "http://localhost:8765";
-
-function apiBase(): string {
-	const env = (import.meta as any)?.env?.VITE_MACRO_API_URL;
-	return typeof env === "string" && env.trim()
-		? env.trim().replace(/\/+$/, "")
-		: DEFAULT_BASE;
-}
-
-async function req(path: string, init?: RequestInit): Promise<any> {
-	const ctl = new AbortController();
-	const to = setTimeout(() => ctl.abort(), 2500);
-	try {
-		const r = await fetch(apiBase() + path, { ...init, signal: ctl.signal });
-		if (!r.ok) {
-			let detail = "HTTP " + r.status;
-			try {
-				const j = await r.json();
-				if (j?.detail) detail = String(j.detail);
-			} catch {
-				/* тело не JSON — оставим статус */
-			}
-			throw new Error(detail);
-		}
-		return await r.json();
-	} finally {
-		clearTimeout(to);
-	}
-}
-
-const OFFLINE_MSG =
-	"Бэкенд макросов не отвечает. Запустите на компьютере backend\\start_backend.bat (или: python backend/macro_server.py).";
-
-function friendly(e: unknown): string {
-	if (e instanceof TypeError || (e as any)?.name === "AbortError")
-		return OFFLINE_MSG;
-	return e instanceof Error ? e.message : String(e);
-}
-
 export function useMacro() {
 	const [status, setStatus] = useState<MacroStatus>({
 		state: "offline",
@@ -81,7 +43,7 @@ export function useMacro() {
 		let alive = true;
 		const tick = async () => {
 			try {
-				const s = await req("/api/status");
+				const s = await apiFetch("/api/status", undefined, 2500);
 				if (!alive) return;
 				setStatus({
 					state: (s.state as MacroState) ?? "idle",
@@ -110,37 +72,40 @@ export function useMacro() {
 			state: () => statusRef.current.state,
 			toggleRecord: async () => {
 				try {
-					await req("/api/record", { method: "POST" });
+					await apiFetch("/api/record", { method: "POST" }, 4000);
 					setLastError(null);
 					return null;
 				} catch (e) {
-					const msg = friendly(e);
+					const msg = friendlyApiError(e);
 					setLastError(msg);
 					return msg;
 				}
 			},
 			play: async (repeat: number) => {
 				try {
-					await req("/api/play", {
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({ repeat_count: repeat }),
-					});
+					await apiFetch(
+						"/api/play",
+						{
+							method: "POST",
+							body: JSON.stringify({ repeat_count: repeat }),
+						},
+						4000,
+					);
 					setLastError(null);
 					return null;
 				} catch (e) {
-					const msg = friendly(e);
+					const msg = friendlyApiError(e);
 					setLastError(msg);
 					return msg;
 				}
 			},
 			stop: async () => {
 				try {
-					await req("/api/stop", { method: "POST" });
+					await apiFetch("/api/stop", { method: "POST" }, 4000);
 					setLastError(null);
 					return null;
 				} catch (e) {
-					const msg = friendly(e);
+					const msg = friendlyApiError(e);
 					setLastError(msg);
 					return msg;
 				}

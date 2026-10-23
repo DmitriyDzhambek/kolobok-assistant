@@ -7,3 +7,4 @@ backend/macros/
 __pycache__/
 *.pyc
 .tmp-ssr.mjs
+backend/data/

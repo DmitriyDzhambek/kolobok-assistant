@@ -146,7 +146,9 @@ function parseRepeat(n: string): number {
 	const d = n.match(/(\d{1,5})\s*(раз|раза|повтор[аов]*|цикл[аов]*)/);
 	if (d) return clamp(parseInt(d[1], 10));
 	const num = "(?:" + Object.keys(WORDS).join("|") + ")";
-	const w = n.match(new RegExp("(?<![а-яё0-9])" + num + "\\s*(раз|раза|повтор)"));
+	const w = n.match(
+		new RegExp("(?<![а-яё0-9])" + num + "\\s*(раз|раза|повтор)"),
+	);
 	if (w) {
 		const v = WORDS[w[0].split(/\s+/)[0]];
 		if (v) return clamp(v);
@@ -463,7 +465,11 @@ export async function runCommand(
 				? { reply: "Не смог остановить: " + err }
 				: { reply: "Остановил! Ты отдыхай — а я покараужу." };
 		}
-		if (/запиш|запис|рекорд|начни/.test(n) || st === "recording" || st === "stopping") {
+		if (
+			/запиш|запис|рекорд|начни/.test(n) ||
+			st === "recording" ||
+			st === "stopping"
+		) {
 			const wasRecording = st === "recording" || st === "stopping";
 			const err = await m.toggleRecord();
 			if (err) return { reply: "Ой, рекордер не слушается: " + err };
@@ -477,7 +483,10 @@ export async function runCommand(
 							"Пишу макрос! Двигай мышью и кликай как в игре — а как закончишь, нажми F8 или ESC либо скажи «останови запись».",
 					};
 		}
-		if (/запусти|включи|повтори|воспроизведи|проиграй|стартуй|жми/.test(n) || st === "playing") {
+		if (
+			/запусти|включи|повтори|воспроизведи|проиграй|стартуй|жми/.test(n) ||
+			st === "playing"
+		) {
 			const rep = parseRepeat(n);
 			const err = await m.play(rep);
 			if (err) return { reply: "Не могу запустить макрос: " + err };

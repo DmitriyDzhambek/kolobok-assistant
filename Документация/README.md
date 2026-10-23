@@ -8,6 +8,12 @@
 Референс из чата: виджет с push-to-talk микрофоном (нажать — говорить, удерживать/пробел — диктовка,
 отпустить — отправить) и подсказками о доступе к микрофону в Windows.
 
+Этап 2 (по запросам пользователя): автокликер-макросрекордер для игрового контента (Python FastAPI +
+pynput + pyautogui); превращение в Telegram Mini App (SDK, initData-безопасность, туннель — гайд
+TELEGRAM-MINI-APP.md); «Мозги» — LLM-чат с характером (/api/chat); «Магия утра» — трекер привычек
+со стриками и мотивацией (Atomic Habits). UI: вкладки 🌙/✨/💬, стеклянные панели, кристаллы-созвездия,
+framer-motion, палитра космос+золото, мобильная адаптация под Mini App.
+
 ## Архитектура и стек
 
 - Vite + React 18 + TypeScript. Основной backend не нужен: голос (Web Speech API), хранение задач (localStorage),
@@ -28,20 +34,33 @@ npx tsc --noEmit                                  # типы
 npx esbuild scripts/engine-smoke.mjs --bundle --platform=node --format=esm --outfile=/tmp/engine-smoke.mjs && node /tmp/engine-smoke.mjs   # движок команд
 npx esbuild scripts/ssr-check.tsx --bundle --platform=node --format=esm --external:react --external:react-dom --loader:.css=empty --outfile=.tmp-ssr.mjs && node .tmp-ssr.mjs && rm .tmp-ssr.mjs  # рендер сцены
 
-# Бэкенд автокликера (тесты работают без pynput/pyautogui — заглушки внутри):
-python3 backend/test_macro_server.py
+# Бэкенд (тесты работают без pynput/pyautogui — заглушки внутри):
+python3 backend/test_macro_server.py       # 29 проверок: запись, F8/F9, repeat_count
+python3 backend/test_habits_chat.py        # 38 проверок: привычки, стрики, чат, initData
 # Реальный запуск (на машине с мышью/экраном, Windows):
 cd backend && start_backend.bat   # или: pip install -r requirements.txt && python macro_server.py
 ```
 
+В dev-режиме фронтенд обращается к бэкенду same-origin через Vite-прокси `/backend-api`
+(→ http://127.0.0.1:8765, см. vite.config.ts) — работает и на ПК пользователя, и в облачном превью.
+
 ## Переменные окружения
 
-Секретов нет (внешние сервисы без ключей: open-meteo). Необязательные:
+Секретов в репозитории нет; ключи задаются только в окружении бэкенда/сборки:
 
-- `VITE_MACRO_API_URL` — адрес бэкенда макросов для фронтенда (по умолчанию `http://localhost:8765`);
-- `KOLOBOK_MACRO_PORT` — порт сервера макросов (по умолчанию 8765);
+- `VITE_MACRO_API_URL` — адрес бэкенда для фронтенда (по умолчанию в dev — прокси `/backend-api`,
+  в сборке — `http://localhost:8765`);
+- `KOLOBOK_MACRO_PORT` — порт сервера (по умолчанию 8765);
+- `KOLOBOK_MACRO_BACKEND` — хост:порт для Vite-прокси (по умолчанию 127.0.0.1:8765);
 - `KOLOBOK_MACRO_ORIGINS` — дополнительные CORS-origins через запятую
-  (по умолчанию разрешены localhost/127.0.0.1 порты 4173, 5173–5175).
+  (по умолчанию localhost/127.0.0.1 порты 4173, 5173–5175);
+- `DATABASE_URL` — PostgreSQL для привычек в production (без него — JSON-файл, не SQLite);
+- `KOLOBOK_HABITS_FILE` — путь JSON-хранилища привычек (по умолчанию backend/data/habits.json);
+- `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL` — LLM, любой OpenAI-совместимый API
+  (модель по умолчанию gpt-4o-mini);
+- `GEMINI_API_KEY` / `GEMINI_MODEL` — альтернативный провайдер Gemini (по умолчанию gemini-1.5-flash);
+- `KOLOBOK_TG_BOT_TOKEN` / `KOLOBOK_ALLOWED_TG_IDS` — проверка initData Telegram: только владельцы
+  из белого списка (без них — локальный режим без проверки).
 
 ## Установка на Windows 10 (памятка пользователю)
 
@@ -82,6 +101,33 @@ cd backend && start_backend.bat   # или: pip install -r requirements.txt && p
 - На Windows-запуск: `backend/start_backend.bat` (venv + pip install + старт) — инструкция в
   `КАК-ЗАПУСТИТЬ-НА-WINDOWS.md` (пункт 7).
 
+## Решения по «Мозгам» и «Магии утра» (этап 2)
+
+- База привычек: SQLite запрещён правилом платформы, поэтому схема спроектирована под
+  PostgreSQL через `DATABASE_URL` (backend/db.py, DDL в PG_DDL, драйвер psycopg — ленивый импорт);
+  без DATABASE_URL работает постоянный JSON-файл backend/data/habits.json — данные сохраняются,
+  а на ПК пользователя не нужно ставить СУБД. Таблицы: habits (id, title, icon, created_at,
+  sort_order, archived, best_streak) и habit_logs (habit_id, day, status done|skipped, marked_at,
+  PK (habit_id, day)). Стрик не хранится, а вычисляется: подряд идущие 'done'-дни, заканчивающиеся
+  сегодня или вчера; best_streak (рекорд) обновляется при отметках.
+- LLM (backend/llm.py): провайдер по env (OpenAI-совместимый → Gemini → офлайн-характер).
+  Системный промпт — дословно характер из запроса пользователя (заработок через Mini Apps/
+  инвестиции/курьерство, мотивация, любознательный вопрос раз в 3–4 сообщения — для LLM через
+  счётчик в nudge, для офлайна — детерминированно каждое 4-е). Сбой провайдера = честный
+  переход на офлайн-характер (source=offline-error), ассистент отвечает всегда.
+- Безопасность (backend/tg_auth.py): официальный алгоритм проверки initData
+  (HMAC SHA-256, секрет WebAppData, data_check_string), контроль возраста auth_date (24 ч)
+  и белого списка KOLOBOK_ALLOWED_TG_IDS. Включается только с KOLOBOK_TG_BOT_TOKEN — локальный
+  режим не ломает. Фронтенд шлёт заголовок X-TG-Init-Data автоматически (src/api/client.ts).
+- Фронтенд: вкладки 🌙/✨/💬 (framer-motion AnimatePresence), глубинные ссылки ?tab=morning|chat;
+  стеклянные панели (.glass), кристаллы-привычки с золотым свечением при выполнении (.habit.done),
+  «цепочка звёзд» за 7 дней, мотивация после полного чек-листа; чат — пузырьки, typing-dots,
+  быстрые вопросы, микрофон (useRecognition), озвучка ответов (useSpeech), индикатор связи.
+- Telegram Mini App: telegram-web-app.js в index.html, src/tma.ts (ready/expand), полная инструкция
+  по туннелям (Cloudflare/ngrok), BotFather и деплою (Vercel/GitHub Pages) — TELEGRAM-MINI-APP.md.
+- Реалтайм-WebSocket отложен как следующий шаг: текущие HTTP-эндпоинты уже работают удалённо
+  через туннель, статусы видны по индикаторам; WS даст мгновенные пуш-статусы воспроизведения.
+
 ## Статус
 
 - [x] Каркас проекта, движок команд, речь, дизайн-сцена, PWA.
@@ -102,6 +148,17 @@ cd backend && start_backend.bat   # или: pip install -r requirements.txt && p
   `npm run build` OK; dev-сервер 5175 HTTP 200; скриншот `/?macro` — панель рендерится, при незапущенном
   бэкенде показывает инструкцию и блокирует кнопки. Реальная запись/воспроизведение мыши возможны только
   на машине пользователя (Windows) — в sandbox нет экрана и мыши.
+- [x] Этап 2: «Мозги» (LLM-чат) + «Магия утра» (привычки/стрики) + TMA-интеграция + вкладки.
+  Проверено агентом в sandbox: backend-тесты 38/38 (CRUD привычек, стрики по реальным датам,
+  валидация 422/404, мотивация при all_done, офлайн-LLM с вопросом на 4-е сообщение, initData HMAC:
+  валидная/чужой ID/подделанная подпись/просроченная — 403; регресс макрос-тестов 29/29 OK);
+  tsc чисто, engine-smoke OK, SSR OK (вкладки на месте), npm run build OK (332 КБ JS);
+  бэкенд запущен в sandbox на 8765, фронтенд на 5175 — интеграция через Vite-прокси /backend-api
+  проверена curl (status, habits, POST привычек, отметки, чат) и скриншотами promto_preview:
+  «✨ Магия утра» (кристаллы, золотое свечение выполненной привычки, стрик 2, форма AddHabit)
+  и «💬 Чат» (стеклянная панель, индикатор «на связи», быстрые вопросы) рендерятся корректно.
+  LLM с реальным ключом и клиент Telegram проверяются только у пользователя (ключей и TG-сессии
+  в sandbox нет); офлайн-режим без ключей проверен полностью.
 
 ## Git / GitHub
 
