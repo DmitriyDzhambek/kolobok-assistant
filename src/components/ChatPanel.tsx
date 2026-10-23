@@ -70,7 +70,8 @@ export function ChatPanel({
 				method: "POST",
 				body: JSON.stringify({ messages: payload }),
 			});
-			const reply = String(r?.reply ?? "").trim() || "Колобок задумался и промолчал…";
+			const reply =
+				String(r?.reply ?? "").trim() || "Колобок задумался и промолчал…";
 			setMsgs((p) => [...p, { id: uid(), role: "assistant", content: reply }]);
 			setOnline(true);
 			if (!muted) speak(reply);

@@ -104,8 +104,7 @@ export function MorningMagic() {
 							</div>
 							<div className="habit-title">{hb.title}</div>
 							<div className="habit-streak">
-								🔥 {hb.streak}{" "}
-								<small>рекорд {hb.best_streak}</small>
+								🔥 {hb.streak} <small>рекорд {hb.best_streak}</small>
 							</div>
 							<div className="habit-week" title="Цепочка за 7 дней">
 								{hb.week.map((d, k) => (
@@ -118,16 +117,9 @@ export function MorningMagic() {
 								<motion.button
 									whileTap={{ scale: 0.88 }}
 									className={hb.today === "done" ? "on" : ""}
-									title={
-										hb.today === "done"
-											? "Снять отметку"
-											: "Выполнено!"
-									}
+									title={hb.today === "done" ? "Снять отметку" : "Выполнено!"}
 									onClick={() =>
-										void h.mark(
-											hb.id,
-											hb.today === "done" ? "clear" : "done",
-										)
+										void h.mark(hb.id, hb.today === "done" ? "clear" : "done")
 									}
 								>
 									✓

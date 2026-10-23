@@ -1236,3 +1236,149 @@ body {
 		max-width: 92%;
 	}
 }
+
+/* ===== Волшебная книга рецептов (🍲) ===== */
+.tb .tb-emoji { font-size: 20px; line-height: 1; filter: drop-shadow(0 0 6px rgba(255, 200, 60, .55)); }
+.recipe-panel {
+	position: relative; z-index: 6;
+	width: min(760px, 100%);
+	margin: 12px auto 0;
+	padding: 14px 16px 18px;
+	background: linear-gradient(165deg, rgba(11, 22, 52, .95), rgba(7, 13, 34, .97));
+	border: 1px solid rgba(255, 205, 90, .5);
+	border-radius: 20px;
+	box-shadow: 0 12px 44px rgba(0, 0, 0, .5), 0 0 26px rgba(255, 200, 60, .14), inset 0 1px 0 rgba(255, 255, 255, .06);
+	max-height: min(72vh, 660px);
+	overflow-y: auto;
+	scrollbar-width: thin;
+}
+.rp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.rp-title { font-weight: 800; font-size: 19px; color: #ffd76a; letter-spacing: .3px; }
+.rp-sub { font-size: 12px; color: #93a9dd; margin-top: 2px; }
+.rp-close {
+	flex: none; width: 30px; height: 30px; border-radius: 50%;
+	border: 1px solid rgba(255, 205, 90, .4); background: rgba(255, 205, 90, .08);
+	color: #ffd76a; font-size: 18px; line-height: 1; cursor: pointer;
+}
+.rp-close:hover { background: rgba(255, 205, 90, .2); }
+
+/* список */
+.rp-search {
+	display: flex; align-items: center; gap: 8px;
+	background: rgba(255, 255, 255, .06);
+	border: 1px solid rgba(147, 169, 221, .35);
+	border-radius: 12px; padding: 8px 12px; margin-bottom: 10px;
+}
+.rp-search input {
+	flex: 1; background: transparent; border: 0; outline: none;
+	color: #eaf1ff; font-size: 15px;
+}
+.rp-search input::placeholder { color: #7d92c6; }
+.rp-cats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.rp-cat {
+	display: inline-flex; align-items: center; gap: 6px;
+	padding: 7px 12px; border-radius: 999px; cursor: pointer;
+	border: 1px solid rgba(147, 169, 221, .35);
+	background: rgba(255, 255, 255, .05); color: #cdd9f6; font-size: 13px;
+}
+.rp-cat.on {
+	background: linear-gradient(180deg, #ffd76a, #f0b93b);
+	border-color: #ffd76a; color: #241a05; font-weight: 700;
+	box-shadow: 0 0 14px rgba(255, 200, 60, .45);
+}
+.rp-cat-ico { font-size: 15px; }
+.rp-empty {
+	margin: 0 0 10px; padding: 8px 12px; border-radius: 10px;
+	background: rgba(255, 205, 90, .1); border: 1px dashed rgba(255, 205, 90, .45);
+	color: #ffe6a3; font-size: 13px;
+}
+.rp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.rp-item {
+	position: relative; text-align: left; cursor: pointer;
+	display: flex; flex-direction: column; gap: 4px;
+	padding: 10px 12px; border-radius: 14px;
+	background: rgba(255, 255, 255, .05);
+	border: 1px solid rgba(147, 169, 221, .3);
+	color: #eaf1ff;
+}
+.rp-item:hover { border-color: rgba(255, 205, 90, .6); background: rgba(255, 205, 90, .08); }
+.rp-item-ico { font-size: 26px; }
+.rp-item-name { font-weight: 700; font-size: 14px; }
+.rp-item-meta { font-size: 11px; color: #93a9dd; }
+.rp-item-fav { position: absolute; top: 8px; right: 10px; color: #ff6b8a; font-size: 14px; }
+
+/* карточка блюда */
+.rp-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.rp-ico {
+	flex: none; width: 54px; height: 54px; border-radius: 50%;
+	display: grid; place-items: center; font-size: 28px;
+	background: radial-gradient(circle at 35% 30%, #24407e, #101c40);
+	border: 1px solid rgba(255, 205, 90, .55);
+	box-shadow: 0 0 16px rgba(255, 200, 60, .25);
+}
+.rp-names { flex: 1; min-width: 0; }
+.rp-name { font-size: 24px; font-weight: 800; color: #ffffff; }
+.rp-subname {
+	font-size: 14px; font-style: italic; color: #ffd76a;
+	border-bottom: 2px solid rgba(255, 205, 90, .5); display: inline-block; padding-bottom: 2px;
+}
+.rp-badge {
+	flex: none; text-align: center; font-weight: 800; font-size: 11px; line-height: 1.35;
+	color: #ffd76a; padding: 8px 10px; border-radius: 12px;
+	border: 1px solid rgba(255, 205, 90, .55); background: rgba(255, 205, 90, .08);
+	transform: rotate(2deg);
+}
+.rp-meta {
+	display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+	padding: 10px 0; margin-bottom: 8px;
+	border-top: 1px solid rgba(147, 169, 221, .25);
+	border-bottom: 1px solid rgba(147, 169, 221, .25);
+}
+.rp-meta-i { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.rp-mi {
+	flex: none; width: 34px; height: 34px; border-radius: 50%;
+	display: grid; place-items: center; font-size: 16px;
+	border: 1px solid rgba(255, 205, 90, .5); background: rgba(255, 205, 90, .08);
+}
+.rp-meta-i small { display: block; font-size: 10px; color: #93a9dd; }
+.rp-meta-i b { font-size: 13px; color: #ffffff; }
+.rp-sec { margin: 10px 0 6px; font-weight: 800; color: #ffd76a; font-size: 15px; }
+.rp-ing {
+	list-style: none; margin: 0; padding: 0;
+	columns: 2; column-gap: 22px;
+}
+.rp-ing li {
+	break-inside: avoid; font-size: 13px; color: #eaf1ff; padding: 2px 0 2px 14px; position: relative;
+}
+.rp-ing li::before { content: "•"; position: absolute; left: 2px; color: #ffd76a; }
+.rp-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.rp-steps li { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: #eaf1ff; }
+.rp-num {
+	flex: none; width: 22px; height: 22px; border-radius: 50%;
+	display: grid; place-items: center; font-size: 12px; font-weight: 800;
+	background: linear-gradient(180deg, #ffd76a, #f0b93b); color: #241a05;
+}
+.rp-tip {
+	margin-top: 10px; padding: 8px 12px; border-radius: 10px; font-size: 13px;
+	background: rgba(120, 190, 255, .08); border: 1px solid rgba(120, 190, 255, .3); color: #cfe4ff;
+}
+.rp-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+.rp-back {
+	padding: 9px 14px; border-radius: 999px; cursor: pointer;
+	border: 1px solid rgba(147, 169, 221, .4); background: rgba(255, 255, 255, .05);
+	color: #cdd9f6; font-size: 13px;
+}
+.rp-save {
+	padding: 9px 18px; border-radius: 999px; cursor: pointer; font-weight: 800; font-size: 13px;
+	border: 1px solid #ffd76a; color: #241a05;
+	background: linear-gradient(180deg, #ffd76a, #f0b93b);
+	box-shadow: 0 0 16px rgba(255, 200, 60, .4);
+}
+.rp-save.on { background: linear-gradient(180deg, #ff8fa8, #ff6b8a); border-color: #ff8fa8; color: #33060f; }
+
+@media (max-width: 560px) {
+	.rp-ing { columns: 1; }
+	.rp-meta { grid-template-columns: 1fr; }
+	.rp-name { font-size: 20px; }
+	.rp-badge { display: none; }
+}

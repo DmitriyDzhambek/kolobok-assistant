@@ -38,6 +38,10 @@ ctx.macro = {
 const cases = [
 	"открой ютуб",
 	"найди рецепт борща",
+	"рецепт оливье",
+	"как приготовить плов",
+	"покажи рецепты",
+	"что приготовить",
 	"таймер на 5 минут",
 	"таймер через полчаса",
 	"напомни позвонить маме через час",
@@ -68,6 +72,31 @@ for (const c of cases) {
 			"\n  → " +
 			r.reply.slice(0, 110) +
 			(r.link ? " | link: " + r.link.url : ""),
+	);
+}
+
+// Рецепты должны открываться внутри Колобка, а не ссылкой в браузер.
+const recipeCases = [
+	["найди рецепт борща", "borsch"],
+	["рецепт оливье", "olivier"],
+	["как приготовить плов", "plov"],
+	["покажи сырники", "syrniki"],
+	["покажи рецепты", null],
+	["что приготовить", null],
+];
+let recipeFail = 0;
+for (const [q, id] of recipeCases) {
+	const r = await runCommand(q, ctx);
+	const ok =
+		!!r.recipe && !r.link && (id ? r.recipe.id === id : !r.recipe.id);
+	if (!ok) recipeFail++;
+	console.log(
+		(ok ? "— " : "✗ ") +
+			q +
+			"\n  → " +
+			(r.recipe ? JSON.stringify(r.recipe) : "NO RECIPE") +
+			" | " +
+			r.reply.slice(0, 90),
 	);
 }
 
@@ -122,8 +151,9 @@ if (!macroOk)
 	console.log("FAIL: macro", JSON.stringify(macroLog), "tasks:", tasks.length);
 if (!weatherOk)
 	console.log("FAIL: weather", weatherFail + "/" + weatherChecked);
+if (recipeFail) console.log("FAIL: recipes", recipeFail);
 console.log(
-	chipOk && taskOk && macroOk && weatherOk
-		? `ENGINE SMOKE OK (weather checked: ${weatherChecked})`
+	chipOk && taskOk && macroOk && weatherOk && recipeFail === 0
+		? `ENGINE SMOKE OK (weather checked: ${weatherChecked}, recipes ok)`
 		: "ENGINE SMOKE FAILED",
 );

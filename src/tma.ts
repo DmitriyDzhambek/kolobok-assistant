@@ -6,7 +6,10 @@ let inited = false;
 
 export function tgWebApp(): any | null {
 	try {
-		return (typeof window !== "undefined" && (window as any)?.Telegram?.WebApp) || null;
+		return (
+			(typeof window !== "undefined" && (window as any)?.Telegram?.WebApp) ||
+			null
+		);
 	} catch {
 		return null;
 	}

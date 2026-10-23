@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Kolobok } from "./components/Kolobok";
 import { Background } from "./components/Background";
 import { MacroPanel } from "./components/MacroPanel";
+import { RecipePanel } from "./components/RecipePanel";
 import { MorningMagic } from "./components/MorningMagic";
 import { ChatPanel } from "./components/ChatPanel";
 import { initTma } from "./tma";
@@ -59,7 +60,11 @@ function fmtLeft(ms: number): string {
 
 const HELP_ITEMS: [string, string][] = [
 	["«открой ютуб / почту / yandex.ru»", "откроет сайт в новой вкладке"],
-	["«найди рецепт борща»", "поиск в интернете"],
+	["«найди рецепт борща»", "карточка рецепта прямо в Колобке, без браузера"],
+	[
+		"Кнопка 🍲 на панели",
+		"волшебная книга рецептов: 19 блюд, категории, избранное ♥",
+	],
 	["«таймер на 10 минут»", "таймер с голосовым звоном"],
 	["«напомни позвонить маме через час»", "напоминание"],
 	["«задача: сдать отчёт»", "запишет в список задач"],
@@ -68,8 +73,14 @@ const HELP_ITEMS: [string, string][] = [
 	["«который час», «какое сегодня число»", "время и дата"],
 	["«погода в Твери»", "погода без ключей API"],
 	["«записать макрос» → F8/ESC", "автокликер: запись кликов и движений мыши"],
-	["«запусти макрос 10 раз» → F9 стоп", "повтор записи по кругу — для игрового контента"],
-	["Вкладка «✨ Магия утра»", "привычки-созвездия, стрики и мотивация (нужен бэкенд)"],
+	[
+		"«запусти макрос 10 раз» → F9 стоп",
+		"повтор записи по кругу — для игрового контента",
+	],
+	[
+		"Вкладка «✨ Магия утра»",
+		"привычки-созвездия, стрики и мотивация (нужен бэкенд)",
+	],
 	["Вкладка «💬 Чат»", "разговор с Колобком: LLM по ключу или офлайн-характер"],
 	["«расскажи сказку / шутку / пословицу»", "сказочное настроение"],
 	[
@@ -107,6 +118,22 @@ export default function App() {
 			);
 		} catch {
 			return false;
+		}
+	});
+	const [recipeView, setRecipeView] = useState<{
+		open: boolean;
+		query?: string;
+		id?: string;
+	}>(() => {
+		try {
+			const p =
+				typeof window !== "undefined" &&
+				new URLSearchParams(window.location.search).get("recipe");
+			if (p === null) return { open: false };
+			if (!p) return { open: true };
+			return /^[a-z][a-z0-9-]*$/.test(p) ? { open: true, id: p } : { open: true, query: p };
+		} catch {
+			return { open: false };
 		}
 	});
 	const [input, setInput] = useState("");
@@ -187,6 +214,10 @@ export default function App() {
 		};
 		try {
 			const res = await runCommand(t, ctx);
+			if (res.recipe) {
+				setTab("main");
+				setRecipeView({ open: true, ...res.recipe });
+			}
 			announceRef.current(res.reply, res.link ?? null);
 		} catch {
 			announceRef.current(
@@ -343,125 +374,144 @@ export default function App() {
 			</nav>
 
 			<AnimatePresence mode="wait" initial={false}>
-			{tab === "main" && (
-			<motion.main
-				key="main"
-				className="stage"
-				initial={{ opacity: 0, y: 10 }}
-				animate={{ opacity: 1, y: 0 }}
-				exit={{ opacity: 0, y: -10 }}
-				transition={{ duration: 0.18 }}
-			>
-				<Kolobok state={botState} />
-				<div className={`bubble ${botState === "speak" ? "speaking" : ""}`}>
-					<div className="bubble-text">{botText}</div>
-					{botLink && (
-						<a
-							className="bubble-link"
-							href={botLink.url}
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							{botLink.label} ↗
-						</a>
-					)}
-				</div>
-				<div className="transcript">{interim ? "…" + interim : "\u00A0"}</div>
-				<div className="hint">{hint}</div>
-
-				<div className="chips">
-					{chips.map((c) => (
-						<div key={c.id} className="chip chip-time">
-							<span className="chip-ico">
-								{c.kind === "timer" ? "⏳" : "🔔"}
-							</span>
-							<span className="chip-txt">
-								{c.text || (c.kind === "timer" ? "таймер" : "напоминание")}
-							</span>
-							<b>{fmtLeft(c.endsAt - now)}</b>
-						</div>
-					))}
-					{openTasks.map((t) => (
-						<div key={t.id} className="chip chip-task">
-							<button
-								className="chip-done"
-								title="Отметить выполненной"
-								onClick={() =>
-									setTasks((p) =>
-										p.map((x) => (x.id === t.id ? { ...x, done: true } : x)),
-									)
-								}
-							>
-								✓
-							</button>
-							<span className="chip-txt">{t.text}</span>
-							<button
-								className="chip-x"
-								title="Убрать"
-								onClick={() => setTasks((p) => p.filter((x) => x.id !== t.id))}
-							>
-								×
-							</button>
-						</div>
-					))}
-				</div>
-
-				{showMacro && (
-					<MacroPanel
-						status={macro.status}
-						lastError={macro.lastError}
-						ctl={macro.ctl}
-					/>
-				)}
-
-				{showKeys && (
-					<form
-						className="kbrow"
-						onSubmit={(e) => {
-							e.preventDefault();
-							if (input.trim()) {
-								void processText(input);
-								setInput("");
-							}
-						}}
+				{tab === "main" && (
+					<motion.main
+						key="main"
+						className="stage"
+						initial={{ opacity: 0, y: 10 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: -10 }}
+						transition={{ duration: 0.18 }}
 					>
-						<input
-							value={input}
-							onChange={(e) => setInput(e.target.value)}
-							placeholder="Напиши задачу словами… например: таймер на 7 минут"
-							autoFocus
-						/>
-						<button type="submit">Отправить</button>
-					</form>
+						<Kolobok state={botState} />
+						<div className={`bubble ${botState === "speak" ? "speaking" : ""}`}>
+							<div className="bubble-text">{botText}</div>
+							{botLink && (
+								<a
+									className="bubble-link"
+									href={botLink.url}
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									{botLink.label} ↗
+								</a>
+							)}
+						</div>
+						<div className="transcript">
+							{interim ? "…" + interim : "\u00A0"}
+						</div>
+						<div className="hint">{hint}</div>
+
+						<div className="chips">
+							{chips.map((c) => (
+								<div key={c.id} className="chip chip-time">
+									<span className="chip-ico">
+										{c.kind === "timer" ? "⏳" : "🔔"}
+									</span>
+									<span className="chip-txt">
+										{c.text || (c.kind === "timer" ? "таймер" : "напоминание")}
+									</span>
+									<b>{fmtLeft(c.endsAt - now)}</b>
+								</div>
+							))}
+							{openTasks.map((t) => (
+								<div key={t.id} className="chip chip-task">
+									<button
+										className="chip-done"
+										title="Отметить выполненной"
+										onClick={() =>
+											setTasks((p) =>
+												p.map((x) =>
+													x.id === t.id ? { ...x, done: true } : x,
+												),
+											)
+										}
+									>
+										✓
+									</button>
+									<span className="chip-txt">{t.text}</span>
+									<button
+										className="chip-x"
+										title="Убрать"
+										onClick={() =>
+											setTasks((p) => p.filter((x) => x.id !== t.id))
+										}
+									>
+										×
+									</button>
+								</div>
+							))}
+						</div>
+
+						{showMacro && (
+							<MacroPanel
+								status={macro.status}
+								lastError={macro.lastError}
+								ctl={macro.ctl}
+							/>
+						)}
+
+						<AnimatePresence>
+							{recipeView.open && (
+								<RecipePanel
+									key="recipes"
+									initialId={recipeView.id}
+									initialQuery={recipeView.query}
+									onClose={() =>
+										setRecipeView((v) => ({ ...v, open: false }))
+									}
+								/>
+							)}
+						</AnimatePresence>
+
+						{showKeys && (
+							<form
+								className="kbrow"
+								onSubmit={(e) => {
+									e.preventDefault();
+									if (input.trim()) {
+										void processText(input);
+										setInput("");
+									}
+								}}
+							>
+								<input
+									value={input}
+									onChange={(e) => setInput(e.target.value)}
+									placeholder="Напиши задачу словами… например: таймер на 7 минут"
+									autoFocus
+								/>
+								<button type="submit">Отправить</button>
+							</form>
+						)}
+					</motion.main>
 				)}
-			</motion.main>
-			)}
 
-			{tab === "morning" && (
-				<motion.div
-					key="morning"
-					className="tabpage"
-					initial={{ opacity: 0, y: 10 }}
-					animate={{ opacity: 1, y: 0 }}
-					exit={{ opacity: 0, y: -10 }}
-					transition={{ duration: 0.18 }}
-				>
-					<MorningMagic />
-				</motion.div>
-			)}
+				{tab === "morning" && (
+					<motion.div
+						key="morning"
+						className="tabpage"
+						initial={{ opacity: 0, y: 10 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: -10 }}
+						transition={{ duration: 0.18 }}
+					>
+						<MorningMagic />
+					</motion.div>
+				)}
 
-			{tab === "chat" && (
-				<motion.div
-					key="chat"
-					className="tabpage"
-					initial={{ opacity: 0, y: 10 }}
-					animate={{ opacity: 1, y: 0 }}
-					exit={{ opacity: 0, y: -10 }}
-					transition={{ duration: 0.18 }}
-				>
-					<ChatPanel muted={muted} speak={speak} />
-				</motion.div>
-			)}
+				{tab === "chat" && (
+					<motion.div
+						key="chat"
+						className="tabpage"
+						initial={{ opacity: 0, y: 10 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: -10 }}
+						transition={{ duration: 0.18 }}
+					>
+						<ChatPanel muted={muted} speak={speak} />
+					</motion.div>
+				)}
 			</AnimatePresence>
 
 			<footer className="toolbar">
@@ -554,6 +604,13 @@ export default function App() {
 						<rect x="7" y="2.5" width="10" height="19" rx="5" />
 						<path d="M12 6.5v3.5" />
 					</svg>
+				</button>
+				<button
+					className={`tb recipe ${recipeView.open ? "on" : ""}`}
+					onClick={() => setRecipeView((v) => ({ ...v, open: !v.open }))}
+					title="Волшебная книга рецептов"
+				>
+					<span className="tb-emoji">🍲</span>
 				</button>
 				<button
 					className={`tb ${showHelp ? "on" : ""}`}

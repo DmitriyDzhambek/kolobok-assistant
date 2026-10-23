@@ -15,7 +15,13 @@ const checks: [string, boolean][] = [
 	["hint push-to-talk", html.includes("Нажмите — говорить")],
 	["toolbar mic", html.includes("tb mic")],
 	["toolbar macro button", html.includes("tb macro")],
-	["nav tabs", html.includes("nav") && html.includes("Магия утра") && html.includes("💬 Чат")],
+	["toolbar recipe button", html.includes("tb recipe")],
+	[
+		"nav tabs",
+		html.includes("nav") &&
+			html.includes("Магия утра") &&
+			html.includes("💬 Чат"),
+	],
 	["background stars", html.includes("star")],
 	["forest", html.includes("forest")],
 ];
