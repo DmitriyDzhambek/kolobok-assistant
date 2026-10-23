@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Kolobok } from "./components/Kolobok";
 import { Background } from "./components/Background";
+import { MacroPanel } from "./components/MacroPanel";
+import { useMacro } from "./macro/useMacro";
 import { useRecognition } from "./speech/useRecognition";
 import { useSpeech } from "./speech/useSpeech";
 import {
@@ -61,6 +63,8 @@ const HELP_ITEMS: [string, string][] = [
 	["«посчитай 25*4+10»", "счёт"],
 	["«который час», «какое сегодня число»", "время и дата"],
 	["«погода в Твери»", "погода без ключей API"],
+	["«записать макрос» → F8/ESC", "автокликер: запись кликов и движений мыши"],
+	["«запусти макрос 10 раз» → F9 стоп", "повтор записи по кругу — для игрового контента"],
 	["«расскажи сказку / шутку / пословицу»", "сказочное настроение"],
 	[
 		"Пробел или кнопка микрофона",
@@ -89,8 +93,22 @@ export default function App() {
 	const [muted, setMuted] = useState(false);
 	const [showKeys, setShowKeys] = useState(false);
 	const [showHelp, setShowHelp] = useState(false);
+	const [showMacro, setShowMacro] = useState(() => {
+		try {
+			return (
+				typeof window !== "undefined" &&
+				new URLSearchParams(window.location.search).has("macro")
+			);
+		} catch {
+			return false;
+		}
+	});
 	const [input, setInput] = useState("");
 	const [installEvt, setInstallEvt] = useState<any>(null);
+
+	const macro = useMacro();
+	const macroRef = useRef(macro);
+	macroRef.current = macro;
 
 	const tasksRef = useRef(tasks);
 	tasksRef.current = tasks;
@@ -145,6 +163,7 @@ export default function App() {
 					{ id: uid(), kind, text: txt, endsAt: Date.now() + ms, total: ms },
 				]);
 			},
+			macro: macroRef.current.ctl,
 		};
 		try {
 			const res = await runCommand(t, ctx);
@@ -339,6 +358,14 @@ export default function App() {
 					))}
 				</div>
 
+				{showMacro && (
+					<MacroPanel
+						status={macro.status}
+						lastError={macro.lastError}
+						ctl={macro.ctl}
+					/>
+				)}
+
 				{showKeys && (
 					<form
 						className="kbrow"
@@ -432,6 +459,24 @@ export default function App() {
 					>
 						<rect x="2.5" y="6" width="19" height="12" rx="2" />
 						<path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M9 14h6" />
+					</svg>
+				</button>
+				<button
+					className={`tb macro ${showMacro ? "on" : ""}`}
+					onClick={() => setShowMacro((s) => !s)}
+					title="Автокликер: запись и повтор макросов"
+				>
+					<svg
+						viewBox="0 0 24 24"
+						width="22"
+						height="22"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="2"
+						strokeLinecap="round"
+					>
+						<rect x="7" y="2.5" width="10" height="19" rx="5" />
+						<path d="M12 6.5v3.5" />
 					</svg>
 				</button>
 				<button

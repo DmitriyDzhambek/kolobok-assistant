@@ -2,3 +2,8 @@ node_modules/
 dist/
 *.log
 .DS_Store
+backend/.venv/
+backend/macros/
+__pycache__/
+*.pyc
+.tmp-ssr.mjs

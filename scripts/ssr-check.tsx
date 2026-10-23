@@ -14,6 +14,7 @@ const checks: [string, boolean][] = [
 	["bubble", html.includes("bubble-text")],
 	["hint push-to-talk", html.includes("Нажмите — говорить")],
 	["toolbar mic", html.includes("tb mic")],
+	["toolbar macro button", html.includes("tb macro")],
 	["background stars", html.includes("star")],
 	["forest", html.includes("forest")],
 ];

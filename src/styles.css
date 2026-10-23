@@ -667,3 +667,124 @@ body {
 		height: 64px;
 	}
 }
+
+/* ---- Автокликер: панель макросов ---- */
+.macro-panel {
+	margin: 12px auto 0;
+	max-width: 560px;
+	width: calc(100% - 24px);
+	padding: 12px 14px;
+	border-radius: 16px;
+	background: rgba(20, 14, 40, 0.58);
+	border: 1px solid rgba(255, 215, 102, 0.35);
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+	box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+	color: #f6ead2;
+	text-align: left;
+	animation: bubble-in 0.25s ease;
+}
+.macro-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 15px;
+	flex-wrap: wrap;
+}
+.macro-ico {
+	font-size: 17px;
+}
+.macro-dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: #8a8a8a;
+	box-shadow: 0 0 8px rgba(255, 255, 255, 0.25);
+	flex: none;
+}
+.macro-dot.st-idle {
+	background: #ffd766;
+}
+.macro-dot.st-recording,
+.macro-dot.st-stopping {
+	background: #ff5a5a;
+	animation: aura-pulse 1s infinite;
+}
+.macro-dot.st-playing {
+	background: #7dff8a;
+	animation: aura-pulse 0.8s infinite;
+}
+.macro-dot.st-offline {
+	background: #6b6b6b;
+}
+.macro-state {
+	opacity: 0.85;
+	font-size: 13px;
+}
+.macro-info {
+	margin-top: 7px;
+	font-size: 13px;
+	opacity: 0.82;
+	line-height: 1.45;
+}
+.macro-info code {
+	background: rgba(255, 255, 255, 0.12);
+	padding: 1px 6px;
+	border-radius: 6px;
+	font-size: 12px;
+}
+.macro-err {
+	color: #ffb3b3;
+	opacity: 1;
+}
+.macro-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-top: 10px;
+	flex-wrap: wrap;
+}
+.macro-label {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 14px;
+}
+.macro-label input {
+	width: 84px;
+	padding: 7px 9px;
+	border-radius: 10px;
+	border: 1px solid rgba(255, 215, 102, 0.4);
+	background: rgba(0, 0, 0, 0.35);
+	color: #fff;
+	font-size: 14px;
+}
+.macro-btn {
+	padding: 9px 15px;
+	border-radius: 12px;
+	border: 1px solid rgba(255, 215, 102, 0.5);
+	background: linear-gradient(180deg, rgba(255, 215, 102, 0.25), rgba(255, 150, 50, 0.18));
+	color: #ffe9b8;
+	font-weight: 600;
+	cursor: pointer;
+	font-size: 14px;
+	transition: transform 0.12s ease, filter 0.12s ease;
+}
+.macro-btn:hover:not(:disabled) {
+	filter: brightness(1.12);
+	transform: translateY(-1px);
+}
+.macro-btn:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+.macro-btn.rec.on {
+	background: linear-gradient(180deg, rgba(255, 90, 90, 0.38), rgba(255, 60, 60, 0.22));
+	border-color: rgba(255, 120, 120, 0.7);
+	color: #ffe3e3;
+}
+.macro-btn.play.on {
+	background: linear-gradient(180deg, rgba(120, 255, 140, 0.3), rgba(60, 200, 90, 0.2));
+	border-color: rgba(140, 255, 160, 0.6);
+	color: #eaffe9;
+}

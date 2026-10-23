@@ -17,6 +17,24 @@ const ctx = {
 	pushChip: (kind, text, ms) => chips.push({ kind, text, ms }),
 };
 
+// Фейковый макрос-контроллер: проверяем, что движок дёргает нужные методы.
+const macroLog = [];
+ctx.macro = {
+	state: () => "idle",
+	toggleRecord: async () => {
+		macroLog.push("record");
+		return null;
+	},
+	play: async (r) => {
+		macroLog.push("play:" + r);
+		return null;
+	},
+	stop: async () => {
+		macroLog.push("stop");
+		return null;
+	},
+};
+
 const cases = [
 	"открой ютуб",
 	"найди рецепт борща",
@@ -33,6 +51,10 @@ const cases = [
 	"расскажи сказку",
 	"расскажи шутку",
 	"кто ты",
+	"записать макрос",
+	"запиши макрос",
+	"запусти макрос 10 раз",
+	"останови макрос",
 	"помощь",
 	"я устал",
 	"абракадабра бревис",
@@ -90,14 +112,18 @@ const chipOk =
 	/выпить воды/.test(chips[3].text) &&
 	chips[3].ms === 7200000;
 const taskOk = tasks.length === 1 && tasks[0].done === true;
+const macroOk =
+	macroLog.join(",") === "record,record,play:10,stop" && tasks.length === 1;
 const weatherOk = weatherChecked === 0 || weatherFail === 0;
 
 if (!chipOk) console.log("FAIL: chips", JSON.stringify(chips));
 if (!taskOk) console.log("FAIL: tasks", JSON.stringify(tasks));
+if (!macroOk)
+	console.log("FAIL: macro", JSON.stringify(macroLog), "tasks:", tasks.length);
 if (!weatherOk)
 	console.log("FAIL: weather", weatherFail + "/" + weatherChecked);
 console.log(
-	chipOk && taskOk && weatherOk
+	chipOk && taskOk && macroOk && weatherOk
 		? `ENGINE SMOKE OK (weather checked: ${weatherChecked})`
 		: "ENGINE SMOKE FAILED",
 );
