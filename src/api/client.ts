@@ -14,11 +14,22 @@
 
 const DEFAULT_BASE = "http://localhost:8765";
 
+/** Хосты Vercel: backend задеплоен тем же проектом (serverless /api/*),
+ * поэтому обращаемся по same-origin без префикса. */
+export function isVercelHost(): boolean {
+	try {
+		return /\.vercel\.(app|dev)$/.test(location.hostname);
+	} catch {
+		return false;
+	}
+}
+
 export function apiBase(): string {
 	const env = (import.meta as any)?.env?.VITE_MACRO_API_URL;
 	if (typeof env === "string" && env.trim())
 		return env.trim().replace(/\/+$/, "");
 	if ((import.meta as any)?.env?.DEV) return "/backend-api";
+	if (isVercelHost()) return ""; // same-origin: /api/* и /ws на serverless
 	return DEFAULT_BASE;
 }
 

@@ -1,0 +1,35 @@
+[project]
+name = "kolobok-backend"
+version = "1.1.0"
+description = "Колобок «Ты отдыхай, а я для тебя заработаю»: FastAPI-бэкенд (макросы, чат-LLM, привычки, Telegram initData, WebSocket /ws)"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.110,<1.0",
+    "pydantic>=2.6,<3.0",
+    "uvicorn>=0.29,<1.0",
+    "websockets>=12.0",
+]
+
+[project.optional-dependencies]
+# Локальный desktop-бэкенд (Windows): запись/воспроизведение мыши.
+# На Vercel эти библиотеки НЕ ставятся (нет экрана и мыши) —
+# serverless-функции хватает fastapi+pydantic (см. api/requirements.txt).
+desktop = [
+    "pynput>=1.7.6",
+    "pyautogui>=0.9.54",
+]
+# Production-персистентность вместо JSON-файлов.
+postgres = [
+    "psycopg[binary]>=3.1",
+]
+
+[tool.vercel]
+# Точка входа ASGI-приложения для справочной документации деплоя.
+# Фактически Vercel берёт обработчик из api/index.py, который ре-экспортит
+# этот app; маршрутизация /api/* -> функция настроена в vercel.json (rewrites).
+entrypoint = "macro_server:app"
+runtime = "python3.12"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

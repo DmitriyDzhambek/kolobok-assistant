@@ -40,6 +40,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from storage_paths import writable_file
+
 BASE_DIR = Path(__file__).resolve().parent
 
 PG_DDL = """
@@ -269,9 +271,8 @@ def get_chat_repo():
             if dsn:
                 _repo = PgChatRepo(dsn)
             else:
-                path = Path(
-                    os.environ.get("KOLOBOK_CHAT_FILE")
-                    or (BASE_DIR / "data" / "chat.json")
+                path = writable_file(
+                    "KOLOBOK_CHAT_FILE", BASE_DIR / "data" / "chat.json"
                 )
                 _repo = JsonChatRepo(path)
         return _repo

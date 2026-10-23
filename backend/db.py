@@ -43,6 +43,8 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from storage_paths import writable_file
+
 BASE_DIR = Path(__file__).resolve().parent
 
 PG_DDL = """
@@ -235,7 +237,7 @@ class PgHabitsRepo:
                 q += " WHERE NOT archived"
             q += " ORDER BY sort_order, created_at"
             with conn.cursor() as cur:
-                cur.execute(q)
+                cur.execute(q.encode("utf-8"))
                 rows = cur.fetchall()
             return [
                 {
@@ -258,7 +260,8 @@ class PgHabitsRepo:
             self._ensure(conn)
             with conn.cursor() as cur:
                 cur.execute("SELECT COALESCE(MAX(sort_order), -1) + 1 FROM habits")
-                order = cur.fetchone()[0]
+                row = cur.fetchone()
+                order = int(row[0]) if row else 0
                 cur.execute(
                     "INSERT INTO habits (id, title, icon, sort_order) VALUES (%s, %s, %s, %s)",
                     (hid, title, icon or "⭐", order),
@@ -348,9 +351,8 @@ def get_repo():
             if dsn:
                 _repo = PgHabitsRepo(dsn)
             else:
-                path = Path(
-                    os.environ.get("KOLOBOK_HABITS_FILE")
-                    or (BASE_DIR / "data" / "habits.json")
+                path = writable_file(
+                    "KOLOBOK_HABITS_FILE", BASE_DIR / "data" / "habits.json"
                 )
                 _repo = JsonHabitsRepo(path)
         return _repo

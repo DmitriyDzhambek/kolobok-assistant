@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { apiFetch } from "../api/client";
+import { apiFetch, isVercelHost } from "../api/client";
 
 /** Состояние связи с бэкендом Колобка:
  *  - "connecting" — первая попытка ещё не завершилась («просыпаюсь…»);
@@ -60,6 +60,12 @@ class ConnectionManager {
 		if ((import.meta as any)?.env?.DEV && typeof location !== "undefined") {
 			const proto = location.protocol === "https:" ? "wss:" : "ws:";
 			return `${proto}//${location.host}/backend-api/ws`;
+		}
+		if (typeof location !== "undefined" && isVercelHost()) {
+			// Vercel: serverless не держит WebSocket — соединение упадёт,
+			// менеджер сам откатится на HTTP-пинг /api/status (same-origin).
+			const proto = location.protocol === "https:" ? "wss:" : "ws:";
+			return `${proto}//${location.host}/ws`;
 		}
 		return "ws://localhost:8765/ws";
 	}
