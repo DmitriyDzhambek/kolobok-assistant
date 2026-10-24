@@ -692,7 +692,7 @@ export default function App() {
 				{tab === "orchestrator" && (
 					<motion.div
 						key="orchestrator"
-						className="tabpage"
+						className="tabpage tabpage-wide"
 						initial={{ opacity: 0, y: 10 }}
 						animate={{ opacity: 1, y: 0 }}
 						exit={{ opacity: 0, y: -10 }}

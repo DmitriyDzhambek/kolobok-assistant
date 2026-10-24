@@ -274,46 +274,49 @@ export function LifeOrchestratorDashboard() {
         {portalVisible ? null : portfolio && analysis && plan && (
           <motion.div
             className="od-grid"
-            initial={{ opacity: 0, y: 40, rotateX: 15 }}
-            animate={{ opacity: 1, y: 0, rotateX: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
-            style={{ transformStyle: "preserve-3d" }}
           >
-            {/* ──────────────── БЛОК 1: WEALTH ──────────────── */}
-            <WealthBlock
-              portfolio={portfolio}
-              analysis={analysis}
-              scenario={scenario}
-              onScenarioChange={setScenario}
-              demoMode={demoMode}
-              futuresAdvice={plan.futuresAdvice}
-            />
-
-            {/* ──────────────── БЛОК 2: LIFE (центр) ──────────────── */}
+            {/* ──────────────── БЛОК 1: WEALTH (3 из 12) ──────────────── */}
             <motion.section
-              className="od-zone od-focus od-life"
-              initial={{ opacity: 0, y: 40 }}
+              className="od-col od-col-wealth"
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
+              transition={{ delay: 0.1, duration: 0.5 }}
+            >
+              <WealthBlock
+                portfolio={portfolio}
+                analysis={analysis}
+                scenario={scenario}
+                onScenarioChange={setScenario}
+                demoMode={demoMode}
+                futuresAdvice={plan.futuresAdvice}
+              />
+            </motion.section>
+
+            {/* ──────────────── БЛОК 2: LIFE (5 из 12) ──────────────── */}
+            <motion.section
+              className="od-col od-col-life"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.5 }}
             >
               <div className="od-zone-header">
                 <Heart className={`w-5 h-5 ${isProfit ? "text-pink-400" : "text-blue-400"}`} />
                 <h3 className="od-zone-title">Life Balance</h3>
               </div>
 
-              {/* Индикация сценария (переключатель — в блоке Wealth) */}
+              {/* Индикация сценария */}
               {demoMode && (
                 <div className="od-scenario-hint">
                   Сценарий: <b>{SCENARIO_LABELS[scenario]}</b>
-                  <span className="od-scenario-arrow">← переключается в блоке Wealth</span>
+                  <span className="od-scenario-arrow">← Wealth</span>
                 </div>
               )}
 
-              {/* ═══ Ритм Рынка ═══ */}
+              {/* Ритм Рынка */}
               <MarketRhythmWidget />
-
-              {/* ═══ Гастрономический Терминал ═══ */}
-              <FoodTerminal portfolioStatus={isProfit ? "profit" : isProfit ? "neutral" : "loss"} />
 
               {/* Колобок */}
               <motion.div
@@ -383,124 +386,143 @@ export function LifeOrchestratorDashboard() {
               </div>
             </motion.section>
 
-            {/* ──────────────── БЛОК 3: SKILLS ──────────────── */}
+            {/* ──────────────── БЛОК 3: Skills + Food (4 из 12) ──────────────── */}
             <motion.section
-              className="od-zone od-skills"
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4, duration: 0.5 }}
+              className="od-col od-col-right"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.5 }}
             >
-              <div className="od-zone-header">
-                <Brain className="w-5 h-5 text-purple-400" />
-                <h3 className="od-zone-title">Micro-Learning</h3>
-              </div>
+              <div className="od-zone-inner">
+                {/* Food Terminal (в правой колонке) */}
+                <FoodTerminal portfolioStatus={
+                  demoMode
+                    ? scenario === "loss" || scenario === "closed"
+                      ? "loss"
+                      : "profit"
+                    : portfolio.pnl < 0
+                      ? "loss"
+                      : portfolio.pnl > 0
+                        ? "profit"
+                        : "neutral"
+                } />
 
-              {/* Мини-тест */}
-              <div className="od-quiz">
-                <div className="od-quiz-progress">
-                  <span>
-                    Вопрос {quizIndex + 1}/{QUIZ_QUESTIONS.length}
-                  </span>
-                  <span className="od-quiz-score">
-                    ✦ {quizCorrect}
-                  </span>
-                </div>
-                <p className="od-quiz-question">{currentQuiz.question}</p>
-                <div className="od-quiz-options">
-                  {currentQuiz.options.map((opt, idx) => {
-                    let btnClass = "od-quiz-opt";
-                    if (quizAnswered !== null) {
-                      if (idx === currentQuiz.correct) {
-                        btnClass += " od-quiz-correct";
-                      } else if (idx === quizAnswered && idx !== currentQuiz.correct) {
-                        btnClass += " od-quiz-wrong";
-                      }
-                    }
-                    return (
-                      <button
-                        key={idx}
-                        className={btnClass}
-                        onClick={() => handleQuizAnswer(idx)}
-                        disabled={quizAnswered !== null}
-                      >
-                        {opt}
-                      </button>
-                    );
-                  })}
-                </div>
-                <AnimatePresence>
-                  {quizAnswered !== null && (
-                    <motion.div
-                      className="od-quiz-result"
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                    >
-                      {quizAnswered === currentQuiz.correct ? (
-                        <>
-                          <CheckCircle className="w-5 h-5 text-green-400" />
-                          <p>{currentQuiz.explanation}</p>
-                          <small className="od-quiz-bonus">
-                            Отлично! +10 к уровню твоего финансового IQ 🧠
-                          </small>
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="w-5 h-5 text-red-400" />
-                          <p>{currentQuiz.explanation}</p>
-                        </>
-                      )}
-                      {quizIndex < QUIZ_QUESTIONS.length - 1 && (
-                        <button className="od-quiz-next" onClick={handleNextQuiz}>
-                          Следующий вопрос
-                          <ChevronRight className="w-4 h-4 ml-1" />
-                        </button>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                {/* Разделитель */}
+                <div className="od-divider" />
 
-              {/* Рекомендованный курс (подбирается по уровню стресса) */}
-              {skill && (
-                <div className="od-skill-card">
-                  <div className="od-skill-emoji">{skill.emoji}</div>
-                  <div className="od-skill-title">{skill.title}</div>
-                  <div className="od-skill-src">
-                    <GraduationCap className="inline w-3.5 h-3.5 mr-1" />
-                    {skill.source} · {skill.duration}
+                {/* Micro-Learning */}
+                <div className="od-zone-header">
+                  <Brain className="w-5 h-5 text-purple-400" />
+                  <h3 className="od-zone-title">Micro-Learning</h3>
+                </div>
+
+                {/* Мини-тест */}
+                <div className="od-quiz">
+                  <div className="od-quiz-progress">
+                    <span>
+                      Вопрос {quizIndex + 1}/{QUIZ_QUESTIONS.length}
+                    </span>
+                    <span className="od-quiz-score">
+                      ✦ {quizCorrect}
+                    </span>
                   </div>
+                  <p className="od-quiz-question">{currentQuiz.question}</p>
+                  <div className="od-quiz-options">
+                    {currentQuiz.options.map((opt, idx) => {
+                      let btnClass = "od-quiz-opt";
+                      if (quizAnswered !== null) {
+                        if (idx === currentQuiz.correct) {
+                          btnClass += " od-quiz-correct";
+                        } else if (idx === quizAnswered && idx !== currentQuiz.correct) {
+                          btnClass += " od-quiz-wrong";
+                        }
+                      }
+                      return (
+                        <button
+                          key={idx}
+                          className={btnClass}
+                          onClick={() => handleQuizAnswer(idx)}
+                          disabled={quizAnswered !== null}
+                        >
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <AnimatePresence>
+                    {quizAnswered !== null && (
+                      <motion.div
+                        className="od-quiz-result"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                      >
+                        {quizAnswered === currentQuiz.correct ? (
+                          <>
+                            <CheckCircle className="w-5 h-5 text-green-400" />
+                            <p>{currentQuiz.explanation}</p>
+                            <small className="od-quiz-bonus">
+                              Отлично! +10 к уровню твоего финансового IQ 🧠
+                            </small>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="w-5 h-5 text-red-400" />
+                            <p>{currentQuiz.explanation}</p>
+                          </>
+                        )}
+                        {quizIndex < QUIZ_QUESTIONS.length - 1 && (
+                          <button className="od-quiz-next" onClick={handleNextQuiz}>
+                            Следующий вопрос
+                            <ChevronRight className="w-4 h-4 ml-1" />
+                          </button>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-              )}
 
-              {/* Рекомендации */}
-              <div className="od-reco">
-                <div className="od-reco-title">От Колобка:</div>
-                <ul>
-                  {analysis.recommendations.map((r, i) => (
-                    <li key={i}>{r}</li>
-                  ))}
-                </ul>
-              </div>
+                {/* Рекомендованный курс */}
+                {skill && (
+                  <div className="od-skill-card">
+                    <div className="od-skill-emoji">{skill.emoji}</div>
+                    <div className="od-skill-title">{skill.title}</div>
+                    <div className="od-skill-src">
+                      <GraduationCap className="inline w-3.5 h-3.5 mr-1" />
+                      {skill.source} · {skill.duration}
+                    </div>
+                  </div>
+                )}
 
-              {/* Умный дом */}
-              <div
-                className="od-smart-home"
-                style={{
-                  background: `linear-gradient(135deg, ${plan.smartHomeMood.lighting.color}22, transparent)`,
-                }}
-              >
-                <div className="od-sh-title">🏠 Умный дом</div>
-                <div className="od-sh-desc">{plan.smartHomeMood.description}</div>
-                <div className="od-sh-lights">
-                  <div
-                    className="od-sh-bulb"
-                    style={{
-                      background: plan.smartHomeMood.lighting.color,
-                      boxShadow: `0 0 ${plan.smartHomeMood.lighting.brightness / 2}px ${plan.smartHomeMood.lighting.color}`,
-                      opacity: plan.smartHomeMood.lighting.brightness / 100,
-                    }}
-                  />
-                  <span>{plan.smartHomeMood.lighting.brightness}% яркость</span>
+                {/* Рекомендации */}
+                <div className="od-reco">
+                  <div className="od-reco-title">От Колобка:</div>
+                  <ul>
+                    {analysis.recommendations.map((r, i) => (
+                      <li key={i}>{r}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Умный дом */}
+                <div
+                  className="od-smart-home"
+                  style={{
+                    background: `linear-gradient(135deg, ${plan.smartHomeMood.lighting.color}22, transparent)`,
+                  }}
+                >
+                  <div className="od-sh-title">🏠 Умный дом</div>
+                  <div className="od-sh-desc">{plan.smartHomeMood.description}</div>
+                  <div className="od-sh-lights">
+                    <div
+                      className="od-sh-bulb"
+                      style={{
+                        background: plan.smartHomeMood.lighting.color,
+                        boxShadow: `0 0 ${plan.smartHomeMood.lighting.brightness / 2}px ${plan.smartHomeMood.lighting.color}`,
+                        opacity: plan.smartHomeMood.lighting.brightness / 100,
+                      }}
+                    />
+                    <span>{plan.smartHomeMood.lighting.brightness}% яркость</span>
+                  </div>
                 </div>
               </div>
             </motion.section>

@@ -12,7 +12,7 @@
  * Advisory Mode: никаких кнопок покупки, только советы.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
 	Scan,
@@ -106,7 +106,7 @@ const INVESTOR_STATS = {
 	partners: ["Чижик", "Магнит", "ВкусВилл", "Вкусно — и точка"],
 };
 
-/* ─────────────────────── Food Arbitrage Ticker ─────────────────────── */
+/* ─────────────────────── Food Arbitrage Ticker (CSS-анимация, без rAF) ─────────────────────── */
 
 function FoodArbitrageTicker({
 	selectedStore,
@@ -115,50 +115,22 @@ function FoodArbitrageTicker({
 	selectedStore?: string;
 	onStoreSelect?: (store: string) => void;
 }) {
-	const [offset, setOffset] = useState(0);
-	const ref = useRef<HTMLDivElement>(null);
-
-	// Бесконечная прокрутка
-	useEffect(() => {
-		let frame: number;
-		const animate = () => {
-			setOffset((prev) => {
-				const max = ref.current?.scrollWidth ?? 0;
-				if (prev >= max / 2) return 0;
-				return prev + 0.5;
-			});
-			frame = requestAnimationFrame(animate);
-		};
-		frame = requestAnimationFrame(animate);
-		return () => cancelAnimationFrame(frame);
-	}, []);
-
-	const doubleItems = useMemo(
-		() => [...FOOD_TICKER_DATA, ...FOOD_TICKER_DATA],
-		[],
-	);
-
 	return (
 		<div className="ft-ticker-wrap">
 			<div className="ft-ticker-label">
 				<Activity className="ft-ticker-label__icon" />
 				Биржа Еды — Live
 			</div>
-			<div className="ft-ticker" ref={ref}>
-				<div
-					className="ft-ticker-track"
-					style={{ transform: `translateX(${-offset}px)` }}
-				>
-					{doubleItems.map((item, i) => {
+			<div className="ft-ticker">
+				<div className="ft-ticker-track">
+					{[...FOOD_TICKER_DATA, ...FOOD_TICKER_DATA].map((item, i) => {
 						const isDown = item.change < 0;
 						const isSelected = selectedStore === item.store;
 
 						return (
-							<motion.div
+							<div
 								key={i}
 								className={`ft-ticker-item ${isDown ? "ft-ticker--down" : "ft-ticker--up"} ${isSelected ? "ft-ticker--selected" : ""}`}
-								whileHover={{ scale: 1.05 }}
-								whileTap={{ scale: 0.98 }}
 								onClick={() => onStoreSelect?.(item.store)}
 								style={{ cursor: "pointer" }}
 							>
@@ -173,7 +145,7 @@ function FoodArbitrageTicker({
 									)}
 									{Math.abs(item.change)}%
 								</span>
-							</motion.div>
+							</div>
 						);
 					})}
 				</div>
