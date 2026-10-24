@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Kolobok } from "./components/Kolobok";
 import { Background } from "./components/Background";
@@ -17,6 +17,7 @@ import {
 import { useConnection } from "./net/connection";
 import { initTma } from "./tma";
 import { isAdmin } from "./auth/admin";
+import { useNotifications } from "./hooks/useNotifications";
 import { useMacro } from "./macro/useMacro";
 import { useRecognition } from "./speech/useRecognition";
 import { useSpeech } from "./speech/useSpeech";
@@ -120,6 +121,7 @@ export default function App() {
 	const [muted, setMuted] = useState(false);
 	const [showKeys, setShowKeys] = useState(false);
 	const [showHelp, setShowHelp] = useState(false);
+	const [showNotifs, setShowNotifs] = useState(false);
 	const [updateDismissed, setUpdateDismissed] = useState(false);
 	const [showMacro, setShowMacro] = useState(() => {
 		try {
@@ -176,6 +178,9 @@ export default function App() {
 
 	// Проверка обновлений Service Worker (для PWA — расширения на рабочем столе).
 	const { updateAvailable, installUpdate } = useSWUpdate();
+
+	// Система уведомлений от Колобка.
+	const { notifs, addNotif, markAsRead, dismiss, dismissAll } = useNotifications();
 
 	// Общий «живой канал» с бэкендом стартует сразу (WebSocket + авто-реконнект).
 	useConnection();
@@ -455,7 +460,15 @@ export default function App() {
 						["morning", "✨ Магия утра"],
 						["chat", "💬 Чат"],
 						["partners", "💰 Заработок"],
-						...(admin ? [["admin", "👑 Админ"] as const] : []),
+						...(admin ? [
+							[
+								"admin",
+								<>
+									👑 Админ
+									<span className="admin-pulse" title="Секретная зона">🔥</span>
+								</>,
+							] as ["main" | "morning" | "chat" | "partners" | "admin", React.ReactNode],
+						] : []),
 					] as ["main" | "morning" | "chat" | "partners" | "admin", string][]
 				).map(([id, label]) => (
 					<motion.button
@@ -745,12 +758,68 @@ export default function App() {
 				>
 					<span className="qmark">?</span>
 				</button>
+				<button
+					className={`tb notif ${showNotifs ? "on" : ""}`}
+					onClick={() => setShowNotifs((s) => !s)}
+					title="Уведомления от Колобка"
+				>
+					🔔
+					{notifs.some((n) => !n.read) && (
+						<span className="notif-badge">{notifs.filter((n) => !n.read).length}</span>
+					)}
+				</button>
 			</footer>
 
 			{!rec.supported && (
 				<div className="nosupport">
 					Браузер не поддерживает голосовой ввод — откройте в Google Chrome или
 					пишите задачи клавиатурой (кнопка с клавиатурой).
+				</div>
+			)}
+
+			{showNotifs && (
+				<div className="overlay" onClick={() => setShowNotifs(false)}>
+					<div className="notif-panel" onClick={(e) => e.stopPropagation()}>
+						<div className="notif-header">
+							<h2>🔔 Уведомления от Колобка</h2>
+							<button className="notif-clear" onClick={dismissAll}>
+								Очистить всё
+							</button>
+						</div>
+						{notifs.length === 0 ? (
+							<div className="notif-empty">
+								<p>🫓 Колобок ещё ничего не сказал...</p>
+								<small>Уведомления будут появляться, когда Колобок что-то напомнит</small>
+							</div>
+						) : (
+							<ul className="notif-list">
+								{notifs.map((n) => (
+									<li
+										key={n.id}
+										className={`notif-item ${n.read ? "read" : "unread"}`}
+										onClick={() => markAsRead(n.id)}
+									>
+										<div className="notif-dot" />
+										<div className="notif-content">
+											<div className="notif-text">{n.message}</div>
+											<div className="notif-time">
+												{new Date(n.time).toLocaleString("ru-RU")}
+											</div>
+										</div>
+										<button
+											className="notif-dismiss"
+											onClick={(e) => {
+												e.stopPropagation();
+												dismiss(n.id);
+											}}
+										>
+											✕
+										</button>
+									</li>
+								))}
+							</ul>
+						)}
+					</div>
 				</div>
 			)}
 

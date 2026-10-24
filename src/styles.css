@@ -1450,6 +1450,23 @@ body {
 	.rp-meta { grid-template-columns: 1fr; }
 	.rp-name { font-size: 20px; }
 	.rp-badge { display: none; }
+	.rp-grid {
+		grid-template-columns: 1fr;
+		gap: 10px;
+	}
+	.rp-item {
+		min-height: 70px;
+		padding: 12px;
+	}
+	.rp-item-ico {
+		font-size: 28px;
+	}
+	.rp-item-name {
+		font-size: 14px;
+	}
+	.rp-item-desc {
+		font-size: 12px;
+	}
 }
 
 /* ============ Редизайн: быстрые действия, «Магия утра», чат ============ */
@@ -2530,3 +2547,199 @@ html, body, #root { overflow-x: hidden; max-width: 100vw; }
 	}
 }
 
+
+/* ====== Пульсирующий индикатор на вкладке "Админ" ====== */
+.admin-pulse {
+	display: inline-block;
+	margin-left: 6px;
+	font-size: 12px;
+	animation: admin-pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes admin-pulse-glow {
+	0%, 100% {
+		opacity: 0.4;
+		transform: scale(0.9);
+	}
+	50% {
+		opacity: 1;
+		transform: scale(1.2);
+	}
+}
+
+/* ====== Уведомления ====== */
+.notif-badge {
+	position: absolute;
+	top: -4px;
+	right: -4px;
+	min-width: 16px;
+	height: 16px;
+	border-radius: 8px;
+	background: #ff4444;
+	color: #fff;
+	font-size: 10px;
+	font-weight: 700;
+	display: grid;
+	place-items: center;
+	padding: 0 4px;
+	box-shadow: 0 0 6px rgba(255, 68, 68, 0.6);
+	animation: notif-badge-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes notif-badge-pulse {
+	0%, 100% {
+		transform: scale(1);
+	}
+	50% {
+		transform: scale(1.15);
+	}
+}
+
+.notif-panel {
+	max-width: 420px;
+	max-height: 70vh;
+	overflow-y: auto;
+	background: linear-gradient(180deg, rgba(30, 22, 60, 0.98), rgba(18, 12, 42, 0.98));
+	border: 1px solid rgba(255, 215, 102, 0.4);
+	border-radius: 20px;
+	padding: 20px;
+	box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+	animation: notif-slide-in 0.3s ease;
+}
+
+@keyframes notif-slide-in {
+	from {
+		opacity: 0;
+		transform: translateY(20px) scale(0.95);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+.notif-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 16px;
+	padding-bottom: 12px;
+	border-bottom: 1px solid rgba(255, 215, 102, 0.2);
+}
+
+.notif-header h2 {
+	font-size: 16px;
+	font-weight: 800;
+	color: #ffd76a;
+	margin: 0;
+}
+
+.notif-clear {
+	background: rgba(255, 68, 68, 0.15);
+	border: 1px solid rgba(255, 68, 68, 0.3);
+	color: #ff6b6b;
+	padding: 6px 12px;
+	border-radius: 8px;
+	font-size: 12px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: background 0.2s;
+}
+
+.notif-clear:hover {
+	background: rgba(255, 68, 68, 0.25);
+}
+
+.notif-empty {
+	text-align: center;
+	color: #9fb0e0;
+	padding: 30px 0;
+}
+
+.notif-empty p {
+	font-size: 15px;
+	font-weight: 700;
+	margin: 0 0 8px 0;
+	color: #cdd6f6;
+}
+
+.notif-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.notif-item {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 12px;
+	border-radius: 12px;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	transition: background 0.2s, border-color 0.2s;
+	cursor: pointer;
+}
+
+.notif-item:hover {
+	background: rgba(255, 215, 102, 0.08);
+	border-color: rgba(255, 215, 102, 0.3);
+}
+
+.notif-item.unread {
+	background: rgba(255, 215, 102, 0.12);
+	border-color: rgba(255, 215, 102, 0.4);
+}
+
+.notif-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: #ffd76a;
+	flex: none;
+	margin-top: 4px;
+}
+
+.notif-item.read .notif-dot {
+	background: #555;
+}
+
+.notif-content {
+	flex: 1;
+	min-width: 0;
+}
+
+.notif-text {
+	font-size: 13px;
+	color: #eaf1ff;
+	line-height: 1.4;
+	margin-bottom: 4px;
+}
+
+.notif-time {
+	font-size: 11px;
+	color: #7a8bb8;
+}
+
+.notif-dismiss {
+	background: rgba(255, 255, 255, 0.1);
+	border: none;
+	color: #999;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	display: grid;
+	place-items: center;
+	font-size: 12px;
+	cursor: pointer;
+	flex: none;
+	transition: background 0.2s, color 0.2s;
+}
+
+.notif-dismiss:hover {
+	background: rgba(255, 68, 68, 0.3);
+	color: #ff6b6b;
+}
