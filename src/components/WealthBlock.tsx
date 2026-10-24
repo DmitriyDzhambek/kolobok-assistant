@@ -22,6 +22,7 @@ import {
 import type { TinkoffPortfolioData, PortfolioAnalysis } from "../modules/portfolio/parser";
 import { findTaxTrap, type TaxShieldResult } from "../modules/advisory/taxShield";
 import { getMarketStatus, type MarketInfo } from "../modules/advisory/marketCalendar";
+import { getMarketClock } from "../modules/advisory/marketClock";
 import { analyzePanicRisk, type BehavioralShieldResult } from "../modules/advisory/behavioralShield";
 import { RelaxAudio } from "../modules/advisory/relaxAudio";
 import { writePortfolioStatus } from "../utils/portfolioMood";
@@ -340,7 +341,7 @@ export function WealthBlock({
 						status: "closed-tech" as const,
 						label: "Технические работы",
 						isTrading: false,
-						nextSession: "пн, 09:00 МСК",
+						nextSession: getMarketClock().nextSession,
 						advice:
 							"Сегодня на MOEX технические работы — торги не идут. Расслабься, не смотри на графики и не принимай импульсивных решений. Колобок пока почитает тебе сказку.",
 					},
