@@ -29,6 +29,8 @@ import {
   type WealthScenario,
   SCENARIO_LABELS,
 } from "./WealthBlock";
+import { MarketRhythmWidget } from "./MarketRhythmWidget";
+import { FoodTerminal } from "./FoodTerminal";
 
 /* ─────────────────────── данные для квиза ─────────────────────── */
 
@@ -306,6 +308,12 @@ export function LifeOrchestratorDashboard() {
                   <span className="od-scenario-arrow">← переключается в блоке Wealth</span>
                 </div>
               )}
+
+              {/* ═══ Ритм Рынка ═══ */}
+              <MarketRhythmWidget />
+
+              {/* ═══ Гастрономический Терминал ═══ */}
+              <FoodTerminal portfolioStatus={isProfit ? "profit" : isProfit ? "neutral" : "loss"} />
 
               {/* Колобок */}
               <motion.div
