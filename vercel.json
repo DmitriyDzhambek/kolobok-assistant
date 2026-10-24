@@ -3,12 +3,10 @@
 	"buildCommand": "npm run build",
 	"outputDirectory": "dist",
 	"installCommand": "npm install",
-	"rewrites": [
-		{ "source": "/api", "destination": "/api/index" },
-		{ "source": "/api/(.*)", "destination": "/api/index" },
-		{ "source": "/ws", "destination": "/api/index" },
-		{ "source": "/(.*)", "destination": "/index.html" }
-	],
+  "rewrites": [
+    { "source": "/api", "destination": "/api/index" },
+    { "source": "/api/(.*)", "destination": "/api/index" }
+  ],
 	"functions": {
 		"api/index.py": {
 			"runtime": "python3.12"
