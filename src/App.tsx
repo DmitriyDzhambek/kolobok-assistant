@@ -6,6 +6,7 @@ import { MacroPanel } from "./components/MacroPanel";
 import { RecipePanel } from "./components/RecipePanel";
 import { MorningMagic } from "./components/MorningMagic";
 import { ChatPanel } from "./components/ChatPanel";
+import { useSWUpdate } from "./hooks/useSWUpdate";
 import { PartnersPanel } from "./components/PartnersPanel";
 import { AdminPanel } from "./components/AdminPanel";
 import {
@@ -118,6 +119,7 @@ export default function App() {
 	const [muted, setMuted] = useState(false);
 	const [showKeys, setShowKeys] = useState(false);
 	const [showHelp, setShowHelp] = useState(false);
+	const [updateDismissed, setUpdateDismissed] = useState(false);
 	const [showMacro, setShowMacro] = useState(() => {
 		try {
 			return (
@@ -163,6 +165,9 @@ export default function App() {
 	useEffect(() => {
 		initTma();
 	}, []);
+
+	// Проверка обновлений Service Worker (для PWA — расширения на рабочем столе).
+	const { updateAvailable, installUpdate } = useSWUpdate();
 
 	// Общий «живой канал» с бэкендом стартует сразу (WebSocket + авто-реконнект).
 	useConnection();
@@ -403,6 +408,26 @@ export default function App() {
 	return (
 		<div className="app">
 			<Background />
+
+			{/* Баннер обновления PWA — появляется, когда Service Worker нашёл новую версию */}
+			{updateAvailable && !updateDismissed && (
+				<div className="update-banner">
+					<span className="update-banner-text">
+						✨ Колобок обновился! Перезагрузи, чтобы получить новые функции.
+					</span>
+					<button className="update-banner-btn" onClick={installUpdate}>
+						🔄 Обновить
+					</button>
+					<button
+						className="update-banner-close"
+						onClick={() => setUpdateDismissed(true)}
+						title="Позже"
+					>
+						✕
+					</button>
+				</div>
+			)}
+
 			<header className="hdr">
 				<h1 className="title">Ты отдыхай, а я для тебя заработаю</h1>
 				<div className="subtitle">

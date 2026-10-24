@@ -1,13 +1,7 @@
-const CACHE = "kolobok-v2";
-<<<<<<< HEAD
+const CACHE = "kolobok-v3";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
-=======
-const CORE = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg"];
->>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
 
 function cachePut(cacheName, req, res) {
-	// Кэшируем только успешные same-origin ответы: ошибки (403/404/заглушки)
-	// никогда не должны попадать в кэш и «залипать» там.
 	if (!res || !res.ok || res.type !== "basic") return;
 	const copy = res.clone();
 	caches
@@ -23,8 +17,11 @@ self.addEventListener("install", (e) => {
 			.then((c) =>
 				Promise.allSettled(CORE.map((url) => c.add(url).catch(() => {}))),
 			)
-			.then(() => self.skipWaiting())
-			.catch(() => self.skipWaiting()),
+			.then(() => {
+				// Новый SW установлен, но не активировался — ждём, пока все вкладки закроются.
+				// Когда пользователь откроет приложение снова — активируется сразу.
+			})
+			.catch(() => {}),
 	);
 });
 
@@ -45,7 +42,7 @@ self.addEventListener("fetch", (e) => {
 	const req = e.request;
 	if (req.method !== "GET" || !req.url.startsWith(self.location.origin)) return;
 
-	// Навигация: сначала сеть, кэш только как офлайн-fallback.
+	// Навигация: всегда сначала сеть (свежий index.html), кэш — офлайн-fallback.
 	if (req.mode === "navigate") {
 		e.respondWith(
 			fetch(req)
@@ -54,17 +51,13 @@ self.addEventListener("fetch", (e) => {
 					return res;
 				})
 				.catch(() =>
-<<<<<<< HEAD
 					caches.match(req).then((hit) => hit || caches.match("./index.html")),
-=======
-					caches.match(req).then((hit) => hit || caches.match("/index.html")),
->>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
 				),
 		);
 		return;
 	}
 
-	// Остальные same-origin GET: кэш-первый с пополнением только успешными ответами.
+	// Статика: кэш-первый с авто-пополнением.
 	e.respondWith(
 		caches.match(req).then(
 			(hit) =>
@@ -77,4 +70,25 @@ self.addEventListener("fetch", (e) => {
 					.catch(() => Response.error()),
 		),
 	);
+});
+
+// Сообщаем клиентам, что есть новая версия.
+self.addEventListener("message", (event) => {
+	if (event.data === "SKIP_WAITING") {
+		self.skipWaiting();
+	}
+	if (event.data === "clearCache") {
+		caches.keys().then((keys) => {
+			Promise.all(keys.map((k) => caches.delete(k)));
+		});
+	}
+});
+
+// Автоматически уведомляем клиентов о новой версии.
+self.addEventListener("activate", () => {
+	self.clients.matchAll({ type: "window" }).then((clients) => {
+		clients.forEach((client) => {
+			client.postMessage({ type: "SW_UPDATE_AVAILABLE" });
+		});
+	});
 });
