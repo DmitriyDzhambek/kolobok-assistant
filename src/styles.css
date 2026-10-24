@@ -2775,3 +2775,1060 @@ html, body, #root { overflow-x: hidden; max-width: 100vw; }
 		right: 36px;
 	}
 }
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* ORCHESTRATOR DASHBOARD (od-*)                                   */
+/* ═══════════════════════════════════════════════════════════════ */
+
+.orchestrator {
+	padding: 24px 20px;
+	display: flex;
+	flex-direction: column;
+	gap: 22px;
+}
+
+.od-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+
+.od-title {
+	font-size: 20px;
+	font-weight: 800;
+	margin: 0;
+}
+
+.od-sub {
+	font-size: 13px;
+	color: rgba(255, 255, 255, 0.55);
+	margin-top: 3px;
+}
+
+.od-mood-chip {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	padding: 6px 14px;
+	border: 1.5px solid rgba(255, 255, 255, 0.18);
+	border-radius: 20px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	color: rgba(255, 255, 255, 0.8);
+}
+
+.od-mood-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+/* Drop-zone */
+.od-drop {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	padding: 48px 24px;
+	border: 2px dashed rgba(255, 215, 102, 0.35);
+	border-radius: 18px;
+	background: rgba(255, 215, 102, 0.04);
+	cursor: pointer;
+	transition: border-color 0.2s, background 0.2s;
+	text-align: center;
+}
+
+.od-drop:hover {
+	border-color: rgba(255, 215, 102, 0.7);
+	background: rgba(255, 215, 102, 0.08);
+}
+
+.od-drop-ico {
+	font-size: 48px;
+	line-height: 1;
+}
+
+.od-drop-title {
+	font-size: 16px;
+	font-weight: 700;
+	color: rgba(255, 255, 255, 0.9);
+}
+
+.od-drop-hint {
+	font-size: 13px;
+	color: rgba(255, 255, 255, 0.5);
+	max-width: 320px;
+}
+
+.od-drop-err {
+	font-size: 13px;
+	color: #ff5a5a;
+	font-weight: 600;
+}
+
+/* Grid */
+.od-grid {
+	display: grid;
+	grid-template-columns: 1fr 1.3fr 1fr;
+	gap: 18px;
+}
+
+/* Zones */
+.od-zone {
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 16px;
+	padding: 18px 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.od-zone-title {
+	font-size: 15px;
+	font-weight: 800;
+	margin: 0;
+	letter-spacing: 0.04em;
+	color: rgba(255, 255, 255, 0.85);
+}
+
+/* Wealth */
+.od-balance {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.od-balance-label {
+	font-size: 11px;
+	color: rgba(255, 255, 255, 0.5);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}
+
+.od-balance-value {
+	font-size: 24px;
+	font-weight: 800;
+	color: #fff;
+}
+
+.od-balance-pnl {
+	font-size: 13px;
+	font-weight: 700;
+}
+
+.od-gauge {
+	width: 100%;
+	max-width: 160px;
+	align-self: center;
+}
+
+.od-risk-label {
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.6);
+	text-align: center;
+}
+
+.od-positions {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.od-pos {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 7px 10px;
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.05);
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.od-pos.danger {
+	background: rgba(255, 90, 90, 0.12);
+	border: 1px solid rgba(255, 90, 90, 0.3);
+}
+
+.od-pos-ticker {
+	font-weight: 800;
+	color: rgba(255, 255, 255, 0.9);
+}
+
+.od-pos-risk {
+	font-size: 11px;
+	color: rgba(255, 255, 255, 0.5);
+}
+
+.od-advice-btn {
+	background: linear-gradient(135deg, rgba(255, 215, 102, 0.18), rgba(255, 165, 0, 0.12));
+	border: 1px solid rgba(255, 215, 102, 0.35);
+	border-radius: 10px;
+	padding: 10px 14px;
+	color: rgba(255, 255, 255, 0.9);
+	font-size: 13px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: background 0.2s, border-color 0.2s;
+}
+
+.od-advice-btn:hover {
+	background: linear-gradient(135deg, rgba(255, 215, 102, 0.3), rgba(255, 165, 0, 0.2));
+	border-color: rgba(255, 215, 102, 0.6);
+}
+
+.od-advice-card {
+	overflow: hidden;
+	border-radius: 10px;
+	padding: 12px 14px;
+	font-size: 13px;
+}
+
+.od-advice-card.urgency-high {
+	background: rgba(255, 90, 90, 0.12);
+	border: 1px solid rgba(255, 90, 90, 0.3);
+}
+
+.od-advice-card.urgency-medium {
+	background: rgba(255, 179, 71, 0.1);
+	border: 1px solid rgba(255, 179, 71, 0.3);
+}
+
+.od-advice-card.urgency-low {
+	background: rgba(125, 255, 138, 0.08);
+	border: 1px solid rgba(125, 255, 138, 0.25);
+}
+
+.od-advice-headline {
+	font-weight: 800;
+	margin-bottom: 6px;
+}
+
+.od-advice-reason {
+	color: rgba(255, 255, 255, 0.75);
+	line-height: 1.45;
+}
+
+.od-advice-deadline {
+	margin-top: 6px;
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.55);
+}
+
+/* Focus */
+.od-headline {
+	font-size: 14px;
+	font-weight: 700;
+	color: rgba(255, 255, 255, 0.88);
+}
+
+.od-kolobok {
+	font-size: 44px;
+	text-align: center;
+	line-height: 1;
+}
+
+.od-quote {
+	font-size: 13px;
+	font-style: italic;
+	color: rgba(255, 215, 102, 0.85);
+	text-align: center;
+}
+
+.od-meal {
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 10px;
+	padding: 10px 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.od-meal-title {
+	font-size: 14px;
+	font-weight: 700;
+}
+
+.od-meal-ing {
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.55);
+}
+
+.od-meal-benefit {
+	font-size: 12px;
+	color: rgba(125, 255, 138, 0.8);
+}
+
+.od-habit {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 10px;
+	padding: 10px 12px;
+}
+
+.od-habit-ico {
+	font-size: 22px;
+	line-height: 1;
+	flex-shrink: 0;
+}
+
+.od-habit-title {
+	font-size: 13px;
+	font-weight: 700;
+}
+
+.od-habit-reason {
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.55);
+}
+
+.od-habit-streak {
+	font-size: 12px;
+	font-weight: 800;
+	color: #ffb347;
+	flex-shrink: 0;
+	align-self: center;
+}
+
+.od-timeline {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.od-block {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	padding: 7px 10px;
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.04);
+	font-size: 12px;
+}
+
+.od-block.type-meal {
+	background: rgba(125, 255, 138, 0.07);
+}
+
+.od-block.type-habit {
+	background: rgba(255, 179, 71, 0.07);
+}
+
+.od-block.type-trade {
+	background: rgba(255, 90, 90, 0.08);
+}
+
+.od-time {
+	font-weight: 800;
+	color: rgba(255, 255, 255, 0.6);
+	min-width: 42px;
+	flex-shrink: 0;
+}
+
+.od-bico {
+	font-size: 15px;
+	line-height: 1.2;
+	flex-shrink: 0;
+}
+
+.od-btext {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.od-breason {
+	font-size: 11px;
+	color: rgba(255, 255, 255, 0.45);
+}
+
+/* Skills */
+.od-skill-card {
+	background: rgba(255, 255, 255, 0.06);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 12px;
+	padding: 16px 14px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	text-align: center;
+}
+
+.od-skill-emoji {
+	font-size: 32px;
+	line-height: 1;
+}
+
+.od-skill-title {
+	font-size: 14px;
+	font-weight: 700;
+}
+
+.od-skill-src {
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.5);
+}
+
+.od-skill-dur {
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.6);
+}
+
+.od-skill-btn {
+	margin-top: 6px;
+	background: linear-gradient(135deg, rgba(100, 200, 255, 0.18), rgba(80, 160, 255, 0.1));
+	border: 1px solid rgba(100, 200, 255, 0.35);
+	border-radius: 8px;
+	padding: 8px 18px;
+	color: rgba(255, 255, 255, 0.9);
+	font-size: 13px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: background 0.2s;
+}
+
+.od-skill-btn:hover {
+	background: linear-gradient(135deg, rgba(100, 200, 255, 0.32), rgba(80, 160, 255, 0.2));
+}
+
+.od-reco {
+	background: rgba(255, 255, 255, 0.04);
+	border-radius: 10px;
+	padding: 10px 12px;
+	font-size: 12px;
+}
+
+.od-reco-title {
+	font-weight: 700;
+	margin-bottom: 6px;
+	color: rgba(255, 255, 255, 0.7);
+}
+
+.od-reco ul {
+	margin: 0;
+	padding-left: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	color: rgba(255, 255, 255, 0.6);
+}
+
+.od-smart-home {
+	border-radius: 12px;
+	padding: 12px 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.od-sh-title {
+	font-size: 13px;
+	font-weight: 700;
+}
+
+.od-sh-desc {
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.6);
+}
+
+.od-sh-lights {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.65);
+}
+
+.od-sh-bulb {
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	flex-shrink: 0;
+	transition: all 0.6s ease;
+}
+
+.od-footer {
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.38);
+	text-align: center;
+	padding-top: 4px;
+}
+
+/* Адаптив */
+@media (max-width: 760px) {
+	.od-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* MAGIC PORTAL (загрузка скриншота)                               */
+/* ═══════════════════════════════════════════════════════════════ */
+
+.magic-portal {
+	margin: 10px auto 0;
+	width: 100%;
+}
+
+.portal-drop {
+	position: relative;
+	overflow: hidden;
+	transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.portal-drop::before {
+	content: "";
+	position: absolute;
+	inset: -50%;
+	background: radial-gradient(
+		circle at center,
+		rgba(255, 215, 102, 0.08),
+		transparent 70%
+	);
+	pointer-events: none;
+	animation: portal-glow 4s ease-in-out infinite alternate;
+}
+
+@keyframes portal-glow {
+	from { opacity: 0.3; transform: scale(0.9); }
+	to { opacity: 0.8; transform: scale(1.1); }
+}
+
+.portal-demo {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	margin-top: 14px;
+	position: relative;
+	z-index: 1;
+}
+
+.portal-hint {
+	font-size: 13px;
+	color: rgba(255, 255, 255, 0.4);
+}
+
+.portal-demo-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	background: linear-gradient(135deg, rgba(100, 200, 255, 0.18), rgba(80, 160, 255, 0.1));
+	border: 1px solid rgba(100, 200, 255, 0.35);
+	border-radius: 10px;
+	padding: 8px 18px;
+	color: rgba(255, 255, 255, 0.9);
+	font-size: 13px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: background 0.2s;
+}
+
+.portal-demo-btn:hover {
+	background: linear-gradient(135deg, rgba(100, 200, 255, 0.32), rgba(80, 160, 255, 0.2));
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* WEALTH BLOCK (wv-*) — Advisory Mode                             */
+/* ═══════════════════════════════════════════════════════════════ */
+
+.wv-block {
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 16px;
+	padding: 18px 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.wv-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.wv-zone-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.wv-zone-title {
+	font-size: 15px;
+	font-weight: 800;
+	margin: 0;
+	letter-spacing: 0.04em;
+	color: rgba(255, 255, 255, 0.85);
+}
+
+.wv-icon--header {
+	width: 20px;
+	height: 20px;
+	color: #ffd766;
+}
+
+.wv-scenario-select {
+	background: rgba(20, 14, 40, 0.7);
+	border: 1px solid rgba(255, 215, 102, 0.35);
+	border-radius: 8px;
+	padding: 5px 10px;
+	color: #ffd766;
+	font-size: 12px;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.wv-balance {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.wv-balance-label {
+	font-size: 11px;
+	color: rgba(255, 255, 255, 0.5);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}
+
+.wv-balance-value {
+	font-size: 24px;
+	font-weight: 800;
+	color: #fff;
+}
+
+.wv-balance-pnl {
+	font-size: 13px;
+	font-weight: 700;
+}
+
+.wv-widgets {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+/* Виджеты */
+.wv-card {
+	position: relative;
+	border-radius: 14px;
+	padding: 14px 14px 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	transition: box-shadow 0.3s, border-color 0.3s;
+}
+
+.wv-card__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.wv-icon {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.06);
+	flex-shrink: 0;
+}
+
+.wv-icon__icon {
+	width: 18px;
+	height: 18px;
+}
+
+.wv-icon__timer {
+	position: absolute;
+	right: -3px;
+	bottom: -3px;
+	width: 13px;
+	height: 13px;
+	color: #ffd766;
+	animation: hourglass-flip 2.4s ease-in-out infinite;
+}
+
+@keyframes hourglass-flip {
+	0%, 60% { transform: rotate(0deg); }
+	80%, 100% { transform: rotate(180deg); }
+}
+
+.wv-badge {
+	font-size: 10px;
+	font-weight: 800;
+	letter-spacing: 0.06em;
+	padding: 3px 9px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.1);
+	color: rgba(255, 255, 255, 0.75);
+}
+
+.wv-title {
+	font-size: 14px;
+	font-weight: 800;
+	color: rgba(255, 255, 255, 0.9);
+}
+
+.wv-text {
+	font-size: 12.5px;
+	line-height: 1.5;
+	color: rgba(255, 255, 255, 0.72);
+	margin: 0;
+}
+
+.wv-meta {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+	font-size: 11px;
+	color: rgba(255, 255, 255, 0.5);
+	padding-top: 4px;
+	border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.wv-meta__icon {
+	width: 13px;
+	height: 13px;
+}
+
+/* Варианты карточек */
+.wv-card--neutral {
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.wv-card--urgent {
+	background: linear-gradient(135deg, rgba(255, 215, 102, 0.12), rgba(255, 165, 0, 0.05));
+	border: 1px solid rgba(255, 215, 102, 0.45);
+	box-shadow: 0 0 22px rgba(255, 200, 80, 0.18);
+}
+
+.wv-card--urgent .wv-badge {
+	background: rgba(255, 215, 102, 0.25);
+	color: #ffd766;
+}
+
+.wv-card--warning {
+	background: linear-gradient(135deg, rgba(255, 179, 71, 0.1), transparent);
+	border: 1px solid rgba(255, 179, 71, 0.35);
+}
+
+.wv-card--warning .wv-badge {
+	background: rgba(255, 179, 71, 0.2);
+	color: #ffb347;
+}
+
+.wv-card--safe {
+	background: linear-gradient(135deg, rgba(125, 255, 138, 0.08), transparent);
+	border: 1px solid rgba(125, 255, 138, 0.3);
+}
+
+.wv-card--safe .wv-badge {
+	background: rgba(125, 255, 138, 0.18);
+	color: #7dff8a;
+}
+
+.wv-card--open {
+	background: rgba(125, 255, 138, 0.05);
+	border: 1px solid rgba(125, 255, 138, 0.22);
+}
+
+.wv-card--closed {
+	background: rgba(90, 143, 255, 0.07);
+	border: 1px solid rgba(90, 143, 255, 0.25);
+}
+
+.wv-card--shield {
+	background: linear-gradient(135deg, rgba(90, 180, 255, 0.1), rgba(120, 80, 220, 0.05));
+	border: 1px solid rgba(90, 180, 255, 0.35);
+	box-shadow: 0 0 26px rgba(90, 180, 255, 0.15);
+}
+
+.wv-card--danger {
+	background: linear-gradient(135deg, rgba(255, 90, 90, 0.1), transparent);
+	border: 1px solid rgba(255, 90, 90, 0.35);
+}
+
+.wv-icon--urgent, .wv-icon--warning { color: #ffd766; }
+.wv-icon--safe { color: #7dff8a; }
+.wv-icon--neutral { color: rgba(255, 255, 255, 0.55); }
+.wv-icon--open { color: #7dff8a; }
+.wv-icon--closed { color: #5a8fff; }
+.wv-icon--shield { color: #5ab4ff; }
+.wv-icon--danger { color: #ff5a5a; }
+
+/* Кнопка релакса */
+.wv-relax-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	align-self: flex-start;
+	background: linear-gradient(135deg, rgba(90, 180, 255, 0.2), rgba(120, 80, 220, 0.12));
+	border: 1px solid rgba(90, 180, 255, 0.4);
+	border-radius: 9px;
+	padding: 8px 16px;
+	color: rgba(255, 255, 255, 0.92);
+	font-size: 12.5px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: background 0.2s;
+}
+
+.wv-relax-btn:hover {
+	background: linear-gradient(135deg, rgba(90, 180, 255, 0.35), rgba(120, 80, 220, 0.22));
+}
+
+.wv-btn__icon {
+	width: 14px;
+	height: 14px;
+}
+
+/* Позиции */
+.wv-positions {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.wv-pos {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 7px 10px;
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.05);
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.wv-pos.danger {
+	background: rgba(255, 90, 90, 0.12);
+	border: 1px solid rgba(255, 90, 90, 0.3);
+}
+
+.wv-pos-ticker { font-weight: 800; color: rgba(255, 255, 255, 0.9); }
+.wv-pos-risk { font-size: 11px; color: rgba(255, 255, 255, 0.5); }
+
+/* Advisory-карточка риска */
+.wv-advice-card {
+	overflow: hidden;
+	border-radius: 10px;
+	padding: 12px 14px;
+	background: rgba(255, 215, 102, 0.07);
+	border: 1px solid rgba(255, 215, 102, 0.25);
+}
+
+.wv-advice-headline {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 800;
+	font-size: 13px;
+	margin-bottom: 6px;
+	color: rgba(255, 255, 255, 0.9);
+}
+
+.wv-advice-icon { font-size: 15px; }
+
+.wv-advice-text {
+	font-size: 12.5px;
+	line-height: 1.5;
+	color: rgba(255, 255, 255, 0.7);
+	margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* LIFE BLOCK — зона-хедер, скенарий, карточки жизни               */
+/* ═══════════════════════════════════════════════════════════════ */
+
+.od-zone-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.od-scenario-hint {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.6);
+	background: rgba(255, 215, 102, 0.07);
+	border: 1px solid rgba(255, 215, 102, 0.2);
+	border-radius: 8px;
+	padding: 7px 12px;
+}
+
+.od-scenario-hint b { color: #ffd766; }
+
+.od-scenario-arrow {
+	font-size: 11px;
+	color: rgba(255, 255, 255, 0.4);
+}
+
+.od-life { min-height: 380px; }
+
+.od-life-card {
+	border-radius: 12px;
+	padding: 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.od-life-profit {
+	background: rgba(255, 215, 102, 0.06);
+	border: 1px solid rgba(255, 215, 102, 0.18);
+}
+
+.od-life-loss {
+	background: rgba(90, 143, 255, 0.06);
+	border: 1px solid rgba(90, 143, 255, 0.18);
+}
+
+.od-life-text {
+	font-size: 13px;
+	line-height: 1.5;
+	color: rgba(255, 255, 255, 0.8);
+	margin: 0;
+}
+
+.od-meal-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.od-meal-tag {
+	font-size: 11px;
+	padding: 3px 8px;
+	border-radius: 6px;
+	background: rgba(255, 215, 102, 0.1);
+	color: rgba(255, 215, 102, 0.8);
+	font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* SKILLS — мини-тест                                              */
+/* ═══════════════════════════════════════════════════════════════ */
+
+.od-quiz {
+	background: rgba(169, 125, 255, 0.06);
+	border: 1px solid rgba(169, 125, 255, 0.15);
+	border-radius: 12px;
+	padding: 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.od-quiz-progress {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.55);
+}
+
+.od-quiz-score { color: #ffd766; font-weight: 700; }
+
+.od-quiz-question {
+	font-size: 14px;
+	font-weight: 700;
+	color: rgba(255, 255, 255, 0.9);
+	line-height: 1.4;
+	margin: 0;
+}
+
+.od-quiz-options {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.od-quiz-opt {
+	background: rgba(255, 255, 255, 0.06);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 8px;
+	padding: 10px 12px;
+	font-size: 13px;
+	color: rgba(255, 255, 255, 0.8);
+	cursor: pointer;
+	transition: all 0.2s;
+	text-align: left;
+	font-family: inherit;
+}
+
+.od-quiz-opt:hover:not(:disabled) {
+	background: rgba(169, 125, 255, 0.12);
+	border-color: rgba(169, 125, 255, 0.3);
+}
+
+.od-quiz-opt:disabled { cursor: default; }
+
+.od-quiz-correct {
+	background: rgba(125, 255, 138, 0.15) !important;
+	border-color: rgba(125, 255, 138, 0.4) !important;
+	color: #7dff8a !important;
+}
+
+.od-quiz-wrong {
+	background: rgba(255, 90, 90, 0.15) !important;
+	border-color: rgba(255, 90, 90, 0.4) !important;
+	color: #ff8a8a !important;
+}
+
+.od-quiz-result {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding-top: 8px;
+	border-top: 1px solid rgba(255, 255, 255, 0.08);
+	font-size: 13px;
+	color: rgba(255, 255, 255, 0.75);
+	line-height: 1.45;
+}
+
+.od-quiz-bonus { color: #ffd766; font-weight: 700; }
+
+.od-quiz-next {
+	background: linear-gradient(135deg, rgba(169, 125, 255, 0.2), rgba(100, 200, 255, 0.15));
+	border: 1px solid rgba(169, 125, 255, 0.35);
+	border-radius: 8px;
+	padding: 8px 14px;
+	color: rgba(255, 255, 255, 0.9);
+	font-size: 13px;
+	font-weight: 700;
+	cursor: pointer;
+	align-self: flex-start;
+	transition: background 0.2s;
+	font-family: inherit;
+}
+
+.od-quiz-next:hover {
+	background: linear-gradient(135deg, rgba(169, 125, 255, 0.35), rgba(100, 200, 255, 0.25));
+}

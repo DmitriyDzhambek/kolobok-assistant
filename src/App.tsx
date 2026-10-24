@@ -10,6 +10,7 @@ import { useSWUpdate } from "./hooks/useSWUpdate";
 import { PartnersPanel } from "./components/PartnersPanel";
 import { AdminPanel } from "./components/AdminPanel";
 import { ProactiveGreeting } from "./components/ProactiveGreeting";
+import { LifeOrchestratorDashboard } from "./components/LifeOrchestratorDashboard";
 import {
 	QuickActions,
 	recipeOfTheDay,
@@ -29,6 +30,7 @@ import {
 	type Ctx,
 } from "./brain/commands";
 import { getTimeContext, shouldShowGreeting } from "./utils/timeContext";
+import { FirefliesCanvas } from "./components/FirefliesCanvas";
 import "./styles.css";
 
 type Chip = {
@@ -161,13 +163,13 @@ export default function App() {
 	const [input, setInput] = useState("");
 	const [installEvt, setInstallEvt] = useState<any>(null);
 	const [chatAuto, setChatAuto] = useState<string | null>(null);
-	const [tab, setTab] = useState<"main" | "morning" | "chat" | "partners" | "admin">(() => {
+	const [tab, setTab] = useState<"main" | "morning" | "chat" | "partners" | "orchestrator" | "admin">(() => {
 		try {
 			const p =
 				typeof window !== "undefined" &&
 				new URLSearchParams(window.location.search).get("tab");
 			const allowed =
-				p === "morning" || p === "chat" || p === "partners" || p === "admin";
+				p === "morning" || p === "chat" || p === "partners" || p === "orchestrator" || p === "admin";
 			// Вкладка «Админ» недоступна без прав — падаем на главную.
 			if (p === "admin" && !isAdmin()) return "main";
 			return allowed ? p : "main";
@@ -492,6 +494,7 @@ export default function App() {
 						["morning", "✨ Магия утра"],
 						["chat", "💬 Чат"],
 						["partners", "💰 Заработок"],
+						["orchestrator", "💰 Wealth (Богатство)"],
 						...(admin ? [
 							[
 								"admin",
@@ -499,9 +502,9 @@ export default function App() {
 									👑 Админ
 									<span className="admin-pulse" title="Секретная зона">🔥</span>
 								</>,
-							] as ["main" | "morning" | "chat" | "partners" | "admin", React.ReactNode],
+							] as ["main" | "morning" | "chat" | "partners" | "orchestrator" | "admin", React.ReactNode],
 						] : []),
-					] as ["main" | "morning" | "chat" | "partners" | "admin", string][]
+					] as ["main" | "morning" | "chat" | "partners" | "orchestrator" | "admin", string][]
 				).map(([id, label]) => (
 					<motion.button
 						key={id}
@@ -670,6 +673,19 @@ export default function App() {
 						transition={{ duration: 0.18 }}
 					>
 						<PartnersPanel />
+					</motion.div>
+				)}
+
+				{tab === "orchestrator" && (
+					<motion.div
+						key="orchestrator"
+						className="tabpage"
+						initial={{ opacity: 0, y: 10 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: -10 }}
+						transition={{ duration: 0.18 }}
+					>
+						<LifeOrchestratorDashboard />
 					</motion.div>
 				)}
 

@@ -1,8 +1,51 @@
-type Props = { state: "idle" | "listen" | "think" | "speak" };
+import { motion } from "framer-motion";
+import type { TimeOfDay } from "../utils/timeContext";
 
-export function Kolobok({ state }: Props) {
+type Props = {
+	state: "idle" | "listen" | "think" | "speak";
+	portfolioStatus?: "profit" | "loss" | "neutral";
+	timeOfDay?: TimeOfDay;
+};
+
+/**
+ * Колобок — живой персонаж.
+ *
+ * portfolioStatus:
+ *   profit   — улыбается шире, аура золотая, над головой монетки ✨
+ *   loss     — опечален, брови домиком, повязка на глазу, аура синяя
+ *   neutral  — обычное состояние
+ *
+ * timeOfDay меняет оттенок ауры: утро — розовый, день — тёплый,
+ * вечер — фиолетовый, ночь — лунный.
+ */
+export function Kolobok({ state, portfolioStatus = "neutral", timeOfDay = "night" }: Props) {
+	const auraColor =
+		portfolioStatus === "profit"
+			? "#ffd766"
+			: portfolioStatus === "loss"
+				? "#5a8fff"
+				: timeOfDay === "morning"
+					? "#ff9ed2"
+					: timeOfDay === "day"
+						? "#ffd766"
+						: timeOfDay === "evening"
+							? "#a97dff"
+							: "#ffd766";
+
+	const auraOpacity = portfolioStatus === "profit" ? 0.65 : portfolioStatus === "loss" ? 0.4 : 0.5;
+
 	return (
-		<div className={`kolobok-wrap state-${state}`}>
+		<motion.div
+			className={`kolobok-wrap state-${state} mood-${portfolioStatus} tod-${timeOfDay}`}
+			animate={
+				portfolioStatus === "profit"
+					? { y: [0, -6, 0], scale: [1, 1.03, 1] }
+					: portfolioStatus === "loss"
+						? { y: [0, 2, 0] }
+						: { y: [0, -3, 0] }
+			}
+			transition={{ duration: portfolioStatus === "profit" ? 1.6 : 3, repeat: Infinity, ease: "easeInOut" }}
+		>
 			<svg
 				className="kolobok"
 				viewBox="0 0 220 230"
@@ -17,9 +60,9 @@ export function Kolobok({ state }: Props) {
 						<stop offset="100%" stopColor="#c07a14" />
 					</radialGradient>
 					<radialGradient id="kb-aura" cx="50%" cy="50%" r="50%">
-						<stop offset="0%" stopColor="#ffd766" stopOpacity="0.5" />
-						<stop offset="60%" stopColor="#ffb347" stopOpacity="0.16" />
-						<stop offset="100%" stopColor="#ffb347" stopOpacity="0" />
+						<stop offset="0%" stopColor={auraColor} stopOpacity={auraOpacity} />
+						<stop offset="60%" stopColor={auraColor} stopOpacity={auraOpacity * 0.32} />
+						<stop offset="100%" stopColor={auraColor} stopOpacity="0" />
 					</radialGradient>
 				</defs>
 
@@ -36,7 +79,7 @@ export function Kolobok({ state }: Props) {
 					cy="112"
 					r="82"
 					fill="none"
-					stroke="#ffd766"
+					stroke={auraColor}
 					strokeWidth="2"
 				/>
 
@@ -88,51 +131,86 @@ export function Kolobok({ state }: Props) {
 						strokeLinecap="round"
 					/>
 
+					{/* Прибыль — звёздочки над головой */}
+					{portfolioStatus === "profit" && (
+						<g className="profit-sparkles">
+							<text x="78" y="58" fontSize="18" fill="#ffd766">✦</text>
+							<text x="128" y="52" fontSize="14" fill="#ffe9a8">✦</text>
+							<text x="104" y="44" fontSize="11" fill="#ffd766">★</text>
+						</g>
+					)}
+
 					<g className="eyes">
-						<g>
-							<ellipse cx="88" cy="100" rx="10.5" ry="12" fill="#fff" />
-							<circle cx="89.5" cy="102" r="5.4" fill="#5a3413" />
-							<circle cx="91.5" cy="99.5" r="1.8" fill="#fff" />
-						</g>
-						<g>
-							<ellipse cx="132" cy="100" rx="10.5" ry="12" fill="#fff" />
-							<circle cx="130.5" cy="102" r="5.4" fill="#5a3413" />
-							<circle cx="132.5" cy="99.5" r="1.8" fill="#fff" />
-						</g>
+						{portfolioStatus === "loss" ? (
+							<g>
+								{/* Левый глаз с повязкой */}
+								<ellipse cx="88" cy="100" rx="10.5" ry="12" fill="#fff" />
+								<line x1="78" y1="96" x2="98" y2="104" stroke="#5a3413" strokeWidth="2.5" />
+								<line x1="78" y1="104" x2="98" y2="96" stroke="#5a3413" strokeWidth="2.5" />
+								{/* Правый глаз печальный */}
+								<ellipse cx="132" cy="100" rx="10.5" ry="12" fill="#fff" />
+								<circle cx="131" cy="104" r="5.4" fill="#5a3413" />
+								<circle cx="133" cy="101" r="1.8" fill="#fff" />
+							</g>
+						) : (
+							<g>
+								<g>
+									<ellipse cx="88" cy="100" rx="10.5" ry="12" fill="#fff" />
+									<circle cx="89.5" cy="102" r="5.4" fill="#5a3413" />
+									<circle cx="91.5" cy="99.5" r="1.8" fill="#fff" />
+								</g>
+								<g>
+									<ellipse cx="132" cy="100" rx="10.5" ry="12" fill="#fff" />
+									<circle cx="130.5" cy="102" r="5.4" fill="#5a3413" />
+									<circle cx="132.5" cy="99.5" r="1.8" fill="#fff" />
+								</g>
+							</g>
+						)}
 					</g>
-					<path
-						d="M76 84 Q88 78 98 83"
-						stroke="#8a5a1a"
-						strokeWidth="3"
-						fill="none"
-						strokeLinecap="round"
-					/>
-					<path
-						d="M122 83 Q132 78 144 84"
-						stroke="#8a5a1a"
-						strokeWidth="3"
-						fill="none"
-						strokeLinecap="round"
-					/>
+
+					{/* Брови: прибыль — весёлые, убыток — домиком */}
+					{portfolioStatus === "loss" ? (
+						<g>
+							<path d="M76 80 Q88 86 98 82" stroke="#8a5a1a" strokeWidth="3" fill="none" strokeLinecap="round" />
+							<path d="M122 82 Q132 86 144 80" stroke="#8a5a1a" strokeWidth="3" fill="none" strokeLinecap="round" />
+						</g>
+					) : (
+						<g>
+							<path d="M76 84 Q88 78 98 83" stroke="#8a5a1a" strokeWidth="3" fill="none" strokeLinecap="round" />
+							<path d="M122 83 Q132 78 144 84" stroke="#8a5a1a" strokeWidth="3" fill="none" strokeLinecap="round" />
+						</g>
+					)}
 
 					<circle cx="80" cy="122" r="9" fill="#f78e5e" opacity="0.5" />
 					<circle cx="140" cy="122" r="9" fill="#f78e5e" opacity="0.5" />
 					<circle cx="110" cy="112" r="4" fill="#d97b2e" />
 
-					<path
-						className="mouth-smile"
-						d="M92 128 Q110 143 128 128"
-						stroke="#7a4a12"
-						strokeWidth="3.5"
-						fill="none"
-						strokeLinecap="round"
-					/>
+					{/* Рот: прибыль — широкая улыбка, убыток — грустный */}
+					{portfolioStatus === "loss" ? (
+						<path
+							className="mouth-frown"
+							d="M92 136 Q110 124 128 136"
+							stroke="#7a4a12"
+							strokeWidth="3.5"
+							fill="none"
+							strokeLinecap="round"
+						/>
+					) : (
+						<path
+							className="mouth-smile"
+							d={portfolioStatus === "profit" ? "M88 126 Q110 148 132 126" : "M92 128 Q110 143 128 128"}
+							stroke="#7a4a12"
+							strokeWidth="3.5"
+							fill="none"
+							strokeLinecap="round"
+						/>
+					)}
 					<g className="mouth-talk">
 						<ellipse cx="110" cy="132" rx="11" ry="8" fill="#7a3b12" />
 						<ellipse cx="110" cy="135" rx="6" ry="3.4" fill="#e2705c" />
 					</g>
 				</g>
 			</svg>
-		</div>
+		</motion.div>
 	);
 }
