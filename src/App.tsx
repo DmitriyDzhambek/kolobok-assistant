@@ -16,6 +16,7 @@ import {
 } from "./components/QuickActions";
 import { useConnection } from "./net/connection";
 import { initTma } from "./tma";
+import { isAdmin } from "./auth/admin";
 import { useMacro } from "./macro/useMacro";
 import { useRecognition } from "./speech/useRecognition";
 import { useSpeech } from "./speech/useSpeech";
@@ -156,11 +157,18 @@ export default function App() {
 			const p =
 				typeof window !== "undefined" &&
 				new URLSearchParams(window.location.search).get("tab");
-			return p === "morning" || p === "chat" || p === "partners" || p === "admin" ? p : "main";
+			const allowed =
+				p === "morning" || p === "chat" || p === "partners" || p === "admin";
+			// Вкладка «Админ» недоступна без прав — падаем на главную.
+			if (p === "admin" && !isAdmin()) return "main";
+			return allowed ? p : "main";
 		} catch {
 			return "main";
 		}
 	});
+
+	// Права администратора: вкладка «👑 Админ» рендерится только для своих.
+	const admin = isAdmin();
 
 	useEffect(() => {
 		initTma();
@@ -447,7 +455,7 @@ export default function App() {
 						["morning", "✨ Магия утра"],
 						["chat", "💬 Чат"],
 						["partners", "💰 Заработок"],
-						["admin", "👑 Админ"],
+						...(admin ? [["admin", "👑 Админ"] as const] : []),
 					] as ["main" | "morning" | "chat" | "partners" | "admin", string][]
 				).map(([id, label]) => (
 					<motion.button

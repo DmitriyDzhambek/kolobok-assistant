@@ -1,26 +1,22 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { partnerApps, type PartnerApp } from "./PartnersPanel";
-import { tgInitData } from "../api/client";
+import {
+	loadPartners,
+	savePartners,
+	loadAvatar,
+	saveAvatar,
+	removeAvatar,
+	subscribePartners,
+	type Partner,
+} from "../storage/partners";
+import { useAdminAuth } from "../auth/admin";
 
-/** Ключи localStorage для данных админа */
+/* ------------------------------------------------------------------ */
+/* Аватарка админа                                                     */
+/* ------------------------------------------------------------------ */
+
 const ADMIN_AVATAR_KEY = "admin-avatar";
-const PARTNERS_KEY = "partner-apps";
 
-/** Тип для партнёра с возможностью редактирования */
-type PartnerEdit = {
-	id: string;
-	name: string;
-	description: string;
-	rewardText: string;
-	url: string;
-	iconUrl: string;
-	promoCode?: string;
-	promoReward?: string;
-	incomeInfo?: string;
-};
-
-/** Загрузка аватарки админа */
 function loadAdminAvatar(): string | null {
 	try {
 		return localStorage.getItem(ADMIN_AVATAR_KEY);
@@ -29,7 +25,6 @@ function loadAdminAvatar(): string | null {
 	}
 }
 
-/** Сохранение аватарки админа */
 function saveAdminAvatar(dataUrl: string) {
 	try {
 		localStorage.setItem(ADMIN_AVATAR_KEY, dataUrl);
@@ -38,28 +33,6 @@ function saveAdminAvatar(dataUrl: string) {
 	}
 }
 
-/** Загрузка списка партнёров (с localStorage) */
-function loadPartners(): PartnerEdit[] {
-	try {
-		const raw = localStorage.getItem(PARTNERS_KEY);
-		if (raw) return JSON.parse(raw);
-	} catch {
-		/* noop */
-	}
-	// Фоллбек на дефолтный список
-	return partnerApps.map((p) => ({ ...p }));
-}
-
-/** Сохранение списка партнёров */
-function savePartners(partners: PartnerEdit[]) {
-	try {
-		localStorage.setItem(PARTNERS_KEY, JSON.stringify(partners));
-	} catch {
-		/* noop */
-	}
-}
-
-/** Аватарка админа — круглая, с возможностью загрузки */
 function AdminAvatar({
 	avatar,
 	onUpload,
@@ -146,7 +119,111 @@ function AdminAvatar({
 	);
 }
 
-/** Форма добавления/редактирования партнёра */
+/* ------------------------------------------------------------------ */
+/* Аватарка партнёра (в форме редактирования)                           */
+/* ------------------------------------------------------------------ */
+
+function PartnerAvatarField({
+	partnerId,
+	avatar,
+	onSave,
+	onRemove,
+}: {
+	partnerId: string;
+	avatar: string | null;
+	onSave: (dataUrl: string) => void;
+	onRemove: () => void;
+}) {
+	const [isHovered, setIsHovered] = useState(false);
+	const inputRef = useRef<HTMLInputElement>(null);
+
+	const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (!file) return;
+		if (file.size > 1024 * 1024) {
+			alert("Файл слишком большой. Максимум 1 МБ.");
+			return;
+		}
+		const reader = new FileReader();
+		reader.onload = () => {
+			const img = new Image();
+			img.onload = () => {
+				const canvas = document.createElement("canvas");
+				const size = 128;
+				canvas.width = size;
+				canvas.height = size;
+				const ctx = canvas.getContext("2d")!;
+				const scale = Math.max(size / img.width, size / img.height);
+				const w = img.width * scale;
+				const h = img.height * scale;
+				ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+				const compressed = canvas.toDataURL("image/jpeg", 0.8);
+				onSave(compressed);
+			};
+			img.src = reader.result as string;
+		};
+		reader.readAsDataURL(file);
+		e.target.value = "";
+	};
+
+	return (
+		<div className="admin-form-avatar">
+			<label>Аватарка партнёра</label>
+			<div
+				className="admin-form-avatar-wrap"
+				onPointerEnter={() => setIsHovered(true)}
+				onPointerLeave={() => setIsHovered(false)}
+			>
+				{avatar ? (
+					<div className="admin-form-avatar-circle">
+						<img src={avatar} alt="Аватар" className="admin-form-avatar-img" />
+						{isHovered && (
+							<button
+								className="admin-form-avatar-remove"
+								onClick={onRemove}
+								title="Удалить аватарку"
+							>
+								✕
+							</button>
+						)}
+					</div>
+				) : (
+					<div
+						className="admin-form-avatar-placeholder"
+						onPointerDown={() => inputRef.current?.click()}
+						title="Загрузить аватарку"
+					>
+						📷
+					</div>
+				)}
+				<input
+					ref={inputRef}
+					type="file"
+					accept="image/*"
+					style={{ display: "none" }}
+					onChange={handleFile}
+				/>
+			</div>
+		</div>
+	);
+}
+
+/* ------------------------------------------------------------------ */
+/* Форма добавления / редактирования партнёра                           */
+/* ------------------------------------------------------------------ */
+
+type PartnerEdit = {
+	id: string;
+	name: string;
+	description: string;
+	rewardText: string;
+	url: string;
+	iconUrl: string;
+	promoCode?: string;
+	promoReward?: string;
+	incomeInfo?: string;
+};
+
 function PartnerForm({
 	partner,
 	onSave,
@@ -169,6 +246,13 @@ function PartnerForm({
 			incomeInfo: "",
 		},
 	);
+	const [partnerAvatar, setPartnerAvatar] = useState(
+		() => loadAvatar(form.id),
+	);
+
+	useEffect(() => {
+		setPartnerAvatar(loadAvatar(form.id));
+	}, [form.id]);
 
 	const handleChange = (field: keyof PartnerEdit, value: string) => {
 		setForm((prev) => ({ ...prev, [field]: value }));
@@ -188,6 +272,19 @@ function PartnerForm({
 			<div className="admin-form-title">
 				{partner ? "✏️ Редактировать партнёра" : "➕ Добавить партнёра"}
 			</div>
+
+			<PartnerAvatarField
+				partnerId={form.id}
+				avatar={partnerAvatar}
+				onSave={(dataUrl) => {
+					saveAvatar(form.id, dataUrl);
+					setPartnerAvatar(dataUrl);
+				}}
+				onRemove={() => {
+					removeAvatar(form.id);
+					setPartnerAvatar(null);
+				}}
+			/>
 
 			<div className="admin-form-row">
 				<label>Название *</label>
@@ -237,7 +334,6 @@ function PartnerForm({
 			</div>
 
 			<div className="admin-form-divider" />
-
 			<div className="admin-form-title-small">Промокод (опционально)</div>
 
 			<div className="admin-form-row">
@@ -268,18 +364,17 @@ function PartnerForm({
 			</div>
 
 			<div className="admin-form-actions">
-				<button type="submit" className="admin-btn-save">
-					💾 Сохранить
-				</button>
-				<button type="button" className="admin-btn-cancel" onClick={onCancel}>
-					✕ Отмена
-				</button>
+				<button type="submit" className="admin-btn-save">💾 Сохранить</button>
+				<button type="button" className="admin-btn-cancel" onClick={onCancel}>✕ Отмена</button>
 			</div>
 		</form>
 	);
 }
 
-/** Список партнёров с возможностью редактирования */
+/* ------------------------------------------------------------------ */
+/* Список партнёров (редактируемый)                                     */
+/* ------------------------------------------------------------------ */
+
 function PartnersList({
 	partners,
 	onEdit,
@@ -310,7 +405,13 @@ function PartnersList({
 						transition={{ delay: i * 0.05 }}
 					>
 						<div className="admin-partner-top">
-							{p.iconUrl ? (
+							{loadAvatar(p.id) ? (
+								<img
+									src={loadAvatar(p.id)!}
+									alt={p.name}
+									className="admin-partner-icon"
+								/>
+							) : p.iconUrl ? (
 								<img src={p.iconUrl} alt={p.name} className="admin-partner-icon" />
 							) : (
 								<div className="admin-partner-icon-placeholder">
@@ -360,81 +461,36 @@ function PartnersList({
 	);
 }
 
-/** Экран входа через Telegram */
-function LoginScreen({ onLogin }: { onLogin: (user: any) => void }) {
-	const [status, setStatus] = useState<"checking" | "success" | "error">("checking");
-	const [errorMsg, setErrorMsg] = useState("");
+/* ------------------------------------------------------------------ */
+/* Экраны авторизации                                                   */
+/* ------------------------------------------------------------------ */
 
-	useEffect(() => {
-		const initData = tgInitData();
-		if (!initData) {
-			setStatus("error");
-			setErrorMsg(
-				"Вход доступен только через Telegram Mini App. Откройте приложение внутри Telegram.",
-			);
-			return;
-		}
-
-		// Парсим initData для отображения имени пользователя
-		try {
-			const params = new URLSearchParams(initData);
-			const userRaw = params.get("user");
-			if (userRaw) {
-				const user = JSON.parse(userRaw);
-				onLogin(user);
-			} else {
-				setStatus("error");
-				setErrorMsg("Не удалось получить данные пользователя из Telegram.");
-			}
-		} catch {
-			setStatus("error");
-			setErrorMsg("Ошибка проверки авторизации. Попробуйте ещё раз.");
-		}
-	}, [onLogin]);
-
-	if (status === "checking") {
-		return (
-			<div className="admin-login">
-				<div className="admin-login-card">
-					<div className="admin-login-spinner">⏳</div>
-					<div className="admin-login-text">Проверяю Telegram...</div>
+function AccessDenied() {
+	return (
+		<div className="admin-login">
+		 <div className="admin-login-card admin-login-error">
+				<div className="admin-login-ico">🔒</div>
+				<div className="admin-login-text">
+					Доступ к админ-панели закрыт.
+					<br />
+					<small>Войдите через Telegram Mini App или используйте секретную ссылку: <code>?kolobok-admin=СЕКРЕТ</code></small>
 				</div>
 			</div>
-		);
-	}
-
-	if (status === "error") {
-		return (
-			<div className="admin-login">
-				<div className="admin-login-card admin-login-error">
-					<div className="admin-login-ico">❌</div>
-					<div className="admin-login-text">{errorMsg}</div>
-				</div>
-			</div>
-		);
-	}
-
-	return null;
+		</div>
+	);
 }
 
 /** Админ-панель для управления партнёрами */
 export function AdminPanel() {
-	const [user, setUser] = useState<any>(null);
-	const [partners, setPartners] = useState<PartnerEdit[]>(loadPartners);
+	const { isAdmin, user } = useAdminAuth();
+
+	const [partners, setPartners] = useState<Partner[]>(loadPartners);
 	const [editingPartner, setEditingPartner] = useState<PartnerEdit | null>(null);
 	const [showForm, setShowForm] = useState(false);
 	const [adminAvatar, setAdminAvatar] = useState<string | null>(loadAdminAvatar);
 
-	// Слушаем изменения в других вкладках
-	useEffect(() => {
-		const handler = () => setPartners(loadPartners());
-		window.addEventListener("storage", handler);
-		return () => window.removeEventListener("storage", handler);
-	}, []);
-
-	const handleLogin = (u: any) => {
-		setUser(u);
-	};
+	// Реактивное обновление списка из других вкладок
+	useEffect(() => subscribePartners(() => setPartners(loadPartners())), []);
 
 	const handleSavePartner = (p: PartnerEdit) => {
 		const updated = partners.map((old) => (old.id === p.id ? p : old));
@@ -463,8 +519,8 @@ export function AdminPanel() {
 		setShowForm(true);
 	};
 
-	if (!user) {
-		return <LoginScreen onLogin={handleLogin} />;
+	if (!isAdmin) {
+		return <AccessDenied />;
 	}
 
 	return (
@@ -472,20 +528,14 @@ export function AdminPanel() {
 			<div className="admin-header">
 				<AdminAvatar avatar={adminAvatar} onUpload={saveAdminAvatar} />
 				<div className="admin-user-info">
-					<div className="admin-user-name">
-						👑 Админ-панель
-					</div>
+					<div className="admin-user-name">👑 Админ-панель</div>
 					<div className="admin-user-sub">
-						{user.first_name || "Админ"} · {user.username || "Владелец"}
+						{user?.first_name || "Админ"} · {user?.username || "Владелец"}
 					</div>
 				</div>
 				<button
 					className="admin-btn-logout"
-					onClick={() => {
-						setUser(null);
-						setShowForm(false);
-						setEditingPartner(null);
-					}}
+					onClick={() => window.location.reload()}
 					title="Выйти"
 				>
 					🚪
