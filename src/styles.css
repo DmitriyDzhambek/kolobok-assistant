@@ -1605,20 +1605,24 @@ html, body, #root { overflow-x: hidden; max-width: 100vw; }
 	.habits-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 }
 
-/* ===== Вкладка «Заработок» (Telegram Mini Apps) ===== */
+/* ===== Вкладка «Заработок» (Telegram Mini Apps) — артефакты Колобка ===== */
+
 .partners {
-	padding: 20px;
+	padding: 18px;
 }
+
+/* Шапка секции */
 .partners-head {
 	display: flex;
 	align-items: center;
 	gap: 14px;
-	margin-bottom: 20px;
+	margin-bottom: 18px;
 	padding-bottom: 14px;
 	border-bottom: 1px solid rgba(255, 215, 102, 0.2);
 }
 .partners-ico {
-	font-size: 32px;
+	font-size: 30px;
+	filter: drop-shadow(0 0 8px rgba(255, 200, 60, 0.4));
 }
 .partners-title {
 	font-size: 20px;
@@ -1632,170 +1636,262 @@ html, body, #root { overflow-x: hidden; max-width: 100vw; }
 	margin-top: 3px;
 	line-height: 1.4;
 }
+
+/* ---------- Сетка карточек ---------- */
 .partners-grid {
-	display: flex;
-	flex-direction: column;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
 	gap: 14px;
 }
 
-/* Карточка Mini App */
-.partner-card {
+/* ---------- Карточка-«свиток» ---------- */
+.pa-card {
+	position: relative;
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
+	gap: 10px;
 	padding: 16px;
-	border-radius: 16px;
-	background: rgba(255, 255, 255, 0.05);
-	backdrop-filter: blur(12px);
-	-webkit-backdrop-filter: blur(12px);
-	border: 1px solid rgba(212, 160, 23, 0.3);
-	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+	border-radius: 18px;
+	background:
+		radial-gradient(ellipse at 30% 0%, rgba(255, 215, 102, 0.06) 0%, transparent 60%),
+		rgba(255, 255, 255, 0.04);
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
+	border: 1px solid rgba(212, 160, 23, 0.25);
+	box-shadow:
+		0 4px 24px rgba(0, 0, 0, 0.3),
+		inset 0 1px 0 rgba(255, 215, 102, 0.08);
 	color: #eaf1ff;
-	transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+	transition:
+		border-color 0.3s ease,
+		box-shadow 0.3s ease,
+		background 0.3s ease;
 }
-.partner-card:hover,
-.partner-card:focus-within {
-	border-color: rgba(255, 215, 102, 0.65);
-	box-shadow: 0 0 22px rgba(255, 200, 60, 0.18);
-	background: rgba(255, 215, 102, 0.06);
+.pa-card:hover,
+.pa-card:focus-within {
+	border-color: rgba(255, 215, 102, 0.7);
+	box-shadow:
+		0 0 28px rgba(255, 200, 60, 0.18),
+		0 8px 32px rgba(0, 0, 0, 0.35),
+		inset 0 1px 0 rgba(255, 215, 102, 0.15);
+	background:
+		radial-gradient(ellipse at 30% 0%, rgba(255, 215, 102, 0.1) 0%, transparent 60%),
+		rgba(255, 215, 102, 0.05);
 	outline: none;
 }
 
-/* Верхняя часть: иконка + бейдж */
-.pc-top {
+/* Бейдж Mini App — правый верхний угол */
+.pa-badge {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	font-size: 10px;
+	font-weight: 700;
+	color: #00aacc;
+	background: rgba(0, 170, 204, 0.1);
+	border: 1px solid rgba(0, 170, 204, 0.25);
+	border-radius: 999px;
+	padding: 3px 8px;
+	white-space: nowrap;
+	line-height: 1.4;
+}
+
+/* ---------- Тело карточки ---------- */
+.pa-body {
 	display: flex;
 	align-items: center;
 	gap: 14px;
 }
 
-/* Умная иконка */
-.icon-placeholder,
-.icon-image {
-	width: 56px;
-	height: 56px;
+/* Медальон-аватар */
+.pa-medal {
+	flex: none;
+	width: 52px;
+	height: 52px;
 	border-radius: 50%;
+	overflow: hidden;
 	display: grid;
 	place-items: center;
-	font-size: 26px;
-	font-weight: 800;
-	color: #2a1d05;
-	background: radial-gradient(circle at 35% 30%, #ffe9a8, #ffd05e 60%, #f0b030);
-	box-shadow: 0 0 14px rgba(255, 200, 60, 0.45);
-	border: 2px solid rgba(255, 215, 102, 0.6);
-	flex: none;
+	background: linear-gradient(145deg, #3d2e1a, #1a1208);
+	border: 2px solid rgba(212, 160, 23, 0.45);
+	box-shadow:
+		0 0 14px rgba(255, 200, 60, 0.35),
+		inset 0 2px 6px rgba(255, 215, 102, 0.15);
+	transition:
+		box-shadow 0.3s ease,
+		border-color 0.3s ease;
 }
-.icon-image img {
+.pa-card:hover .pa-medal {
+	box-shadow:
+		0 0 22px rgba(255, 200, 60, 0.55),
+		inset 0 2px 8px rgba(255, 215, 102, 0.25);
+	border-color: rgba(255, 215, 102, 0.75);
+}
+.pa-medal-img {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
-	border-radius: 50%;
 }
-.pc-body {
+.pa-medal-letter {
+	font-size: 22px;
+	font-weight: 800;
+	color: #2a1d05;
+	background: linear-gradient(145deg, #ffe9a8, #f0b030);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+/* ---------- Информация ---------- */
+.pa-info {
 	flex: 1;
 	min-width: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: 3px;
 }
-.pc-title {
+.pa-name {
+	font-size: 15px;
 	font-weight: 800;
-	font-size: 16px;
 	color: #ffffff;
+	line-height: 1.3;
+	margin: 0;
 }
-.pc-desc {
-	font-size: 13px;
-	color: #9fb0e0;
-	line-height: 1.35;
+.pa-desc {
+	font-size: 12px;
+	color: #8a8fb0;
+	line-height: 1.4;
+	margin: 0;
 }
-.pc-reward {
+
+/* ---------- Награда — яркая золотая плашка ---------- */
+.pa-reward {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
 	font-size: 12px;
 	font-weight: 700;
-	color: #ffd76a;
-	background: rgba(255, 215, 102, 0.12);
-	border: 1px solid rgba(255, 215, 102, 0.3);
+	color: #2a1d05;
+	background: linear-gradient(135deg, #ffd766, #ffb347);
+	border: 1px solid rgba(255, 215, 102, 0.6);
 	border-radius: 999px;
 	padding: 4px 12px;
 	align-self: flex-start;
+	box-shadow: 0 0 12px rgba(255, 200, 60, 0.35);
 }
-.pc-go {
-	font-size: 14px;
-	font-weight: 700;
-	color: #ffd76a;
-	opacity: 0.9;
-	transition: opacity 0.2s;
-}
-.partner-card:hover .pc-go {
-	opacity: 1;
+.pa-reward-ico {
+	font-size: 13px;
 }
 
-/* Бейдж Telegram */
-.tg-badge {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
+/* ---------- Промокод ---------- */
+.pa-promo {
+	padding: 10px 14px;
+	border-radius: 12px;
+	background: rgba(255, 215, 102, 0.06);
+	border: 1px solid rgba(255, 215, 102, 0.18);
+}
+.pa-promo-head {
 	font-size: 11px;
 	font-weight: 700;
-	color: #0088cc;
-	background: rgba(0, 136, 204, 0.12);
-	border: 1px solid rgba(0, 136, 204, 0.3);
-	border-radius: 999px;
-	padding: 4px 10px;
-	margin-left: auto;
-	white-space: nowrap;
+	color: #c4a84a;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-bottom: 6px;
 }
-
-/* Промокод и доход */
-.pc-promo {
+.pa-promo-copy {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
 	gap: 8px;
-	flex-wrap: wrap;
-	font-size: 13px;
-}
-.pc-promo-label {
-	color: #9fb0e0;
-	font-weight: 600;
-}
-.pc-promo-code {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	padding: 4px 10px;
+	width: 100%;
+	padding: 6px 10px;
 	border-radius: 8px;
-	border: 1px dashed rgba(255, 215, 102, 0.5);
-	background: rgba(255, 215, 102, 0.1);
-	color: #ffd76a;
-	font-weight: 800;
-	font-size: 13px;
+	border: 1px dashed rgba(255, 215, 102, 0.4);
+	background: rgba(255, 215, 102, 0.05);
 	cursor: pointer;
 	transition: background 0.2s, border-color 0.2s;
 	font-family: inherit;
+	color: inherit;
 }
-.pc-promo-code:hover {
-	background: rgba(255, 215, 102, 0.2);
-	border-color: rgba(255, 215, 102, 0.8);
+.pa-promo-copy:hover {
+	background: rgba(255, 215, 102, 0.14);
+	border-color: rgba(255, 215, 102, 0.7);
 }
-.pc-promo-reward {
+.pa-promo-copy.ok {
+	border-color: rgba(100, 255, 120, 0.5);
+	background: rgba(100, 255, 120, 0.08);
+}
+.pa-promo-code {
+	font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+	font-weight: 800;
+	font-size: 14px;
+	letter-spacing: 1.5px;
+	color: #ffd76a;
+}
+.pa-promo-ico {
+	font-size: 15px;
+	opacity: 0.8;
+	flex: none;
+}
+.pa-promo-hint {
 	font-size: 11px;
 	color: #7dff8a;
-	font-weight: 600;
+	margin-top: 4px;
+	text-align: right;
 }
-.pc-income {
+
+/* ---------- Доход ---------- */
+.pa-income {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	padding: 8px 12px;
+	padding: 7px 12px;
 	border-radius: 10px;
-	background: rgba(120, 255, 140, 0.08);
-	border: 1px solid rgba(120, 255, 140, 0.25);
-	font-size: 13px;
-	color: #b8f0c8;
+	background: rgba(120, 255, 140, 0.07);
+	border: 1px solid rgba(120, 255, 140, 0.2);
+	font-size: 12.5px;
+	color: #a8e8c0;
 }
-.pc-income-ico {
-	font-size: 16px;
+.pa-income-ico {
+	font-size: 15px;
 }
 
-/* Примечание */
+/* ---------- Кнопка «Открыть» — компактная, правый нижний угол ---------- */
+.pa-link {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 8px 12px;
+	border-radius: 10px;
+	border: 1px solid rgba(212, 160, 23, 0.3);
+	background: linear-gradient(135deg, rgba(255, 215, 102, 0.1), rgba(255, 215, 102, 0.04));
+	text-decoration: none;
+	transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.pa-link:hover {
+	background: linear-gradient(135deg, rgba(255, 215, 102, 0.18), rgba(255, 215, 102, 0.08));
+	border-color: rgba(255, 215, 102, 0.6);
+	box-shadow: 0 0 12px rgba(255, 200, 60, 0.15);
+}
+.pa-link-text {
+	font-size: 13px;
+	font-weight: 700;
+	color: #ffd76a;
+}
+.pa-link-arrow {
+	font-size: 18px;
+	font-weight: 800;
+	color: #ffd76a;
+	opacity: 0.7;
+	transition: transform 0.2s ease, opacity 0.2s;
+}
+.pa-link:hover .pa-link-arrow {
+	opacity: 1;
+	transform: translateX(3px);
+}
+
+/* ---------- Примечание ---------- */
 .partners-note {
 	margin-top: 20px;
 	padding: 14px 16px;
@@ -1812,239 +1908,37 @@ html, body, #root { overflow-x: hidden; max-width: 100vw; }
 	margin-top: 6px;
 }
 
-/* Загрузка аватарки партнёра */
-.avatar-wrap {
-	position: absolute;
-	inset: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	cursor: pointer;
-}
-.avatar-circle {
-	position: absolute;
-	inset: 0;
-	border-radius: 50%;
-	overflow: hidden;
-}
-.avatar-img {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	border-radius: 50%;
-}
-.avatar-overlay {
-	position: absolute;
-	inset: 0;
-	background: rgba(0, 0, 0, 0.55);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	border-radius: 50%;
-	opacity: 0;
-	transition: opacity 0.2s;
-}
-.avatar-wrap:hover .avatar-overlay {
-	opacity: 1;
-}
-.avatar-btn-remove {
-	width: 24px;
-	height: 24px;
-	border-radius: 50%;
-	border: none;
-	background: rgba(255, 80, 80, 0.9);
-	color: #fff;
-	font-size: 14px;
-	cursor: pointer;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-.avatar-placeholder {
-	width: 100%;
-	height: 100%;
-	border-radius: 50%;
-	background: rgba(255, 255, 255, 0.08);
-	border: 1px dashed rgba(255, 215, 102, 0.4);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 18px;
-	cursor: pointer;
-	transition: background 0.2s, border-color 0.2s;
-}
-.avatar-placeholder:hover {
-	background: rgba(255, 215, 102, 0.15);
-	border-color: rgba(255, 215, 102, 0.7);
-}
-.avatar-tooltip {
-	position: absolute;
-	bottom: -24px;
-	left: 50%;
-	transform: translateX(-50%);
-	background: rgba(0, 0, 0, 0.8);
-	color: #ffd76a;
-	font-size: 10px;
-	padding: 3px 8px;
-	border-radius: 6px;
-	white-space: nowrap;
-	pointer-events: none;
-}
-
-/* ========== НОВАЯ ВЁРСТКА КАРТОЧКИ ПАРТНЁРА ========== */
-
-/* Круглая иконка */
-.pc-icon {
-	width: 52px;
-	height: 52px;
-	border-radius: 50%;
-	flex: none;
-	overflow: hidden;
-	background: linear-gradient(135deg, #3d2e1a, #1a1208);
-	border: 2px solid rgba(212, 160, 23, 0.5);
-}
-.pc-icon-img {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-}
-.pc-icon-letter {
-	display: grid;
-	place-items: center;
-	width: 100%;
-	height: 100%;
-	font-size: 22px;
-	font-weight: 800;
-	color: #2a1d05;
-	background: linear-gradient(135deg, #ffe9a8, #f0b030);
-}
-
-/* Шапка: иконка + текст + бейдж */
-.pc-head {
-	display: flex;
-	align-items: flex-start;
-	gap: 12px;
-}
-.pc-heads {
-	flex: 1;
-	min-width: 0;
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-}
-
-/* Промокод — аккуратная плашка */
-.pc-promo {
-	padding: 10px 14px;
-	border-radius: 12px;
-	background: rgba(255, 215, 102, 0.08);
-	border: 1px solid rgba(255, 215, 102, 0.22);
-}
-.pc-promo-head {
-	font-size: 11px;
-	font-weight: 700;
-	color: #c4a84a;
-	text-transform: uppercase;
-	letter-spacing: 0.5px;
-	margin-bottom: 6px;
-}
-.pc-promo-copy {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 8px;
-	width: 100%;
-	padding: 6px 10px;
-	border-radius: 8px;
-	border: 1px dashed rgba(255, 215, 102, 0.45);
-	background: rgba(255, 215, 102, 0.06);
-	cursor: pointer;
-	transition: background 0.2s, border-color 0.2s;
-	font-family: inherit;
-	color: inherit;
-}
-.pc-promo-copy:hover {
-	background: rgba(255, 215, 102, 0.15);
-	border-color: rgba(255, 215, 102, 0.75);
-}
-.pc-promo-copy.ok {
-	border-color: rgba(100, 255, 120, 0.5);
-	background: rgba(100, 255, 120, 0.1);
-}
-.pc-promo-code {
-	font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
-	font-weight: 800;
-	font-size: 15px;
-	letter-spacing: 1.5px;
-	color: #ffd76a;
-}
-.pc-promo-ico {
-	font-size: 15px;
-	opacity: 0.8;
-	flex: none;
-}
-.pc-promo-hint {
-	font-size: 11px;
-	color: #7dff8a;
-	margin-top: 4px;
-	text-align: right;
-}
-
-/* Кнопка «Открыть в Telegram» — на всю ширину */
-.pc-open {
-	display: block;
-	width: 100%;
-	padding: 12px 16px;
-	border-radius: 12px;
-	border: 1px solid rgba(212, 160, 23, 0.4);
-	background: linear-gradient(135deg, rgba(255, 215, 102, 0.12), rgba(255, 215, 102, 0.06));
-	color: #ffd76a;
-	font-size: 14px;
-	font-weight: 700;
-	text-align: center;
-	text-decoration: none;
-	cursor: pointer;
-	transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
-}
-.pc-open:hover {
-	background: linear-gradient(135deg, rgba(255, 215, 102, 0.2), rgba(255, 215, 102, 0.1));
-	border-color: rgba(255, 215, 102, 0.7);
-	box-shadow: 0 0 14px rgba(255, 200, 60, 0.2);
-}
-
-/* Мобильная адаптация */
+/* ---------- Мобильная адаптация ---------- */
 @media (max-width: 560px) {
 	.partners {
-		padding: 16px;
-	}
-	.partners-grid {
-		gap: 12px;
-	}
-	.partner-card {
 		padding: 14px;
 	}
-	.pc-icon {
+	.partners-grid {
+		grid-template-columns: 1fr;
+		gap: 12px;
+	}
+	.pa-card {
+		padding: 14px;
+	}
+	.pa-medal {
 		width: 46px;
 		height: 46px;
 	}
-	.pc-icon-letter {
+	.pa-medal-letter {
 		font-size: 19px;
 	}
-	.pc-title {
-		font-size: 15px;
+	.pa-name {
+		font-size: 14px;
 	}
-	.pc-desc {
-		font-size: 12px;
+	.pa-desc {
+		font-size: 11.5px;
 	}
-	.pc-reward {
-		font-size: 11px;
+	.pa-badge {
+		font-size: 9px;
+		padding: 2px 6px;
 	}
-	.tg-badge {
-		font-size: 10px;
-		padding: 3px 8px;
-	}
-	.pc-open {
-		padding: 11px 14px;
+	.pa-link {
+		padding: 7px 10px;
 	}
 }
 

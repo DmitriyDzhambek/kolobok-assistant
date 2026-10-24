@@ -43,36 +43,6 @@ async function copyText(text: string): Promise<boolean> {
 /* Компоненты карточки                                                */
 /* ------------------------------------------------------------------ */
 
-/** Иконка партнёра: аватар из хранилища → iconUrl → нейтральная буква. */
-function PartnerIcon({ partner }: { partner: Partner }) {
-	const [avatar, setAvatar] = useState(() => loadAvatar(partner.id));
-	const [failed, setFailed] = useState(false);
-
-	useEffect(() => {
-		setAvatar(loadAvatar(partner.id));
-		setFailed(false);
-	}, [partner.id, partner.iconUrl]);
-
-	return (
-		<div className="pc-icon">
-			{avatar ? (
-				<img src={avatar} alt="" className="pc-icon-img" />
-			) : partner.iconUrl && !failed ? (
-				<img
-					src={partner.iconUrl}
-					alt=""
-					className="pc-icon-img"
-					onError={() => setFailed(true)}
-				/>
-			) : (
-				<span className="pc-icon-letter">
-					{(partner.name || "?").charAt(0).toUpperCase()}
-				</span>
-			)}
-		</div>
-	);
-}
-
 /** Плашка промокода с копированием. */
 function PromoBlock({ code, reward }: { code: string; reward?: string }) {
 	const [copied, setCopied] = useState(false);
@@ -108,43 +78,86 @@ function PromoBlock({ code, reward }: { code: string; reward?: string }) {
 	);
 }
 
-/** Полная карточка партнёра — прямоугольник, glassmorphism, скругление 16px. */
+/** Полная карточка партнёра — стеклянный «свиток» с золотой рамкой. */
 function PartnerCard({ partner, index }: { partner: Partner; index: number }) {
+	const [avatar, setAvatar] = useState(() => loadAvatar(partner.id));
+	const [failed, setFailed] = useState(false);
+
+	useEffect(() => {
+		setAvatar(loadAvatar(partner.id));
+		setFailed(false);
+	}, [partner.id, partner.iconUrl]);
+
+	const initial = (partner.name || "?").charAt(0).toUpperCase();
+
 	return (
 		<motion.article
-			className="partner-card"
-			initial={{ opacity: 0, y: 12 }}
-			animate={{ opacity: 1, y: 0 }}
+			className="pa-card"
+			initial={{ opacity: 0, y: 18, scale: 0.97 }}
+			animate={{ opacity: 1, y: 0, scale: 1 }}
 			exit={{ opacity: 0, y: -8 }}
-			transition={{ duration: 0.2, delay: index * 0.06 }}
-			whileHover={{ y: -3 }}
+			transition={{ duration: 0.35, delay: index * 0.07, type: "spring" as const }}
+			whileHover={{ y: -4, scale: 1.015 }}
 		>
-			{/* Шапка */}
-			<div className="pc-head">
-				<PartnerIcon partner={partner} />
-				<div className="pc-heads">
-					<h3 className="pc-title">{partner.name}</h3>
-					<p className="pc-desc">{partner.description}</p>
+			{/* Бейдж Mini App — правый верхний угол */}
+			<span className="pa-badge">✈️ Mini App</span>
+
+			{/* Тело карточки */}
+			<div className="pa-body">
+				{/* Медальон-аватар */}
+				<div className="pa-medal">
+					{avatar ? (
+						<img src={avatar} alt="" className="pa-medal-img" />
+					) : partner.iconUrl && !failed ? (
+						<img
+							src={partner.iconUrl}
+							alt=""
+							className="pa-medal-img"
+							onError={() => setFailed(true)}
+						/>
+					) : (
+						<span className="pa-medal-letter">{initial}</span>
+					)}
 				</div>
-				<span className="tg-badge">✈️ Mini App</span>
+
+				{/* Информация */}
+				<div className="pa-info">
+					<h3 className="pa-name">{partner.name}</h3>
+					<p className="pa-desc">{partner.description}</p>
+				</div>
 			</div>
 
-			{partner.rewardText && <div className="pc-reward">{partner.rewardText}</div>}
-			{partner.promoCode && <PromoBlock code={partner.promoCode} reward={partner.promoReward} />}
-			{partner.incomeInfo && (
-				<div className="pc-income">
-					<span className="pc-income-ico">💸</span>
-					<span>{partner.incomeInfo}</span>
+			{/* Награда */}
+			{partner.rewardText && (
+				<div className="pa-reward">
+					<span className="pa-reward-ico">✨</span>
+					{partner.rewardText}
 				</div>
 			)}
 
+			{/* Промокод */}
+			{partner.promoCode && (
+				<PromoBlock code={partner.promoCode} reward={partner.promoReward} />
+			)}
+
+			{/* Доход */}
+			{partner.incomeInfo && (
+				<div className="pa-income">
+					<span className="pa-income-ico">💸</span>
+					{partner.incomeInfo}
+				</div>
+			)}
+
+			{/* Кнопка — компактная стрелка в правом нижнем углу */}
 			<a
-				className="pc-open"
+				className="pa-link"
 				href={partner.url}
 				target="_blank"
 				rel="noopener noreferrer"
+				title="Открыть в Telegram"
 			>
-				Открыть в Telegram →
+				<span className="pa-link-text">Открыть</span>
+				<span className="pa-link-arrow">→</span>
 			</a>
 		</motion.article>
 	);
