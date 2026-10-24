@@ -1,17 +1,22 @@
 {
 	"$schema": "https://openapi.vercel.sh/vercel.json",
-	"buildCommand": "npm run build",
-	"outputDirectory": "dist",
-	"installCommand": "npm install",
-	"rewrites": [
-		{ "source": "/api", "destination": "/api/index" },
-		{ "source": "/api/(.*)", "destination": "/api/index" },
-		{ "source": "/ws", "destination": "/api/index" },
-		{ "source": "/(.*)", "destination": "/index.html" }
-	],
-	"functions": {
-		"api/index.py": {
-			"runtime": "python3.12"
+	"builds": [
+		{
+			"src": "package.json",
+			"use": "@vercel/static-build",
+			"config": {
+				"buildCommand": "npm run build",
+				"outputDirectory": "dist"
+			}
+		},
+		{
+			"src": "api/index.py",
+			"use": "@vercel/python"
 		}
-	}
+	],
+	"rewrites": [
+		{ "source": "/api/(.*)", "destination": "/api/index.py" },
+		{ "source": "/ws", "destination": "/api/index.py" },
+		{ "source": "/(.*)", "destination": "/index.html" }
+	]
 }

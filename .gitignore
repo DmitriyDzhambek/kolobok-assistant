@@ -13,3 +13,4 @@ backend/data/
 .aider*
 .env
 >>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
+.vercel
