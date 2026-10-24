@@ -3832,3 +3832,271 @@ html, body, #root { overflow-x: hidden; max-width: 100vw; }
 .od-quiz-next:hover {
 	background: linear-gradient(135deg, rgba(169, 125, 255, 0.35), rgba(100, 200, 255, 0.25));
 }
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* SMART UI: фон по времени суток                                  */
+/* ═══════════════════════════════════════════════════════════════ */
+
+/* Утро — нежный рассвет, фиолетово-персиковый */
+.tod-morning .bg {
+	background:
+		radial-gradient(1200px 700px at 78% -10%, rgba(255, 158, 210, 0.3), transparent 60%),
+		radial-gradient(900px 500px at 15% 110%, rgba(255, 190, 120, 0.22), transparent 60%),
+		linear-gradient(180deg, #2b1a4d 0%, #4a2b63 40%, #7a4a6b 72%, #2a1838 100%);
+}
+.tod-morning .star { opacity: 0.35; }
+.tod-morning .moon { opacity: 0.45; }
+
+/* День — светло-синий, звёзды почти гаснут */
+.tod-day .bg {
+	background:
+		radial-gradient(1200px 700px at 78% -10%, rgba(120, 200, 255, 0.3), transparent 60%),
+		radial-gradient(900px 500px at 15% 110%, rgba(140, 230, 200, 0.18), transparent 60%),
+		linear-gradient(180deg, #1e3a6e 0%, #2f5f9e 45%, #3f7ab5 75%, #16294a 100%);
+}
+.tod-day .star { opacity: 0.18; }
+.tod-day .moon { opacity: 0.3; }
+
+/* Вечер — глубокий синий (дефолт проекта) */
+.tod-evening .bg {
+	background:
+		radial-gradient(1200px 700px at 78% -10%, rgba(120, 80, 220, 0.38), transparent 60%),
+		radial-gradient(900px 500px at 15% 110%, rgba(40, 90, 180, 0.28), transparent 60%),
+		linear-gradient(180deg, #0b0620 0%, #171040 45%, #101a44 78%, #0a0f28 100%);
+}
+
+/* Ночь — максимально тёмный, звёзды ярче */
+.tod-night .bg {
+	background:
+		radial-gradient(1200px 700px at 78% -10%, rgba(90, 60, 190, 0.3), transparent 60%),
+		radial-gradient(900px 500px at 15% 110%, rgba(25, 60, 140, 0.22), transparent 60%),
+		linear-gradient(180deg, #05030f 0%, #0e0a2c 45%, #0a1130 78%, #05081a 100%);
+}
+.tod-night .star { opacity: 0.95; }
+
+/* Плавная смена фона */
+.bg { transition: background 1.6s ease; }
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* Микрофон-«источник света»: дыхание + волны от прикосновения     */
+/* ═══════════════════════════════════════════════════════════════ */
+
+.tb.mic {
+	position: relative;
+	animation: mic-breathe 4.2s ease-in-out infinite;
+}
+
+/* Волны при наведении — как круги от камня на воде */
+.tb.mic::before,
+.tb.mic::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: 50%;
+	border: 2px solid rgba(255, 215, 102, 0.55);
+	opacity: 0;
+	pointer-events: none;
+}
+
+.tb.mic:hover::before {
+	animation: mic-ripple 1.8s ease-out infinite;
+}
+.tb.mic:hover::after {
+	animation: mic-ripple 1.8s ease-out 0.9s infinite;
+}
+
+/* Во время записии — активный пульс поверх дыхания */
+.tb.mic.on {
+	animation: mic-pulse 1.2s ease-out infinite;
+}
+.tb.mic.on::before,
+.tb.mic.on::after {
+	border-color: rgba(255, 140, 120, 0.6);
+}
+
+@keyframes mic-breathe {
+	0%, 100% {
+		box-shadow: 0 6px 26px rgba(255, 190, 80, 0.4);
+		transform: scale(1);
+	}
+	50% {
+		box-shadow: 0 6px 40px rgba(255, 200, 90, 0.72);
+		transform: scale(1.035);
+	}
+}
+
+@keyframes mic-ripple {
+	0% { transform: scale(1); opacity: 0.7; }
+	100% { transform: scale(1.75); opacity: 0; }
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* Навигация: подъём при наведении + неон активной пилюли          */
+/* ═══════════════════════════════════════════════════════════════ */
+
+.tab {
+	transition:
+		transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+		box-shadow 0.22s ease,
+		filter 0.15s ease,
+		background 0.22s ease;
+	will-change: transform;
+}
+.tab:hover {
+	transform: translateY(-3px);
+	box-shadow: 0 8px 22px rgba(255, 190, 70, 0.28);
+	border-color: rgba(255, 215, 102, 0.55);
+}
+.tab.on {
+	animation: tab-neon 2.8s ease-in-out infinite;
+}
+
+@keyframes tab-neon {
+	0%, 100% {
+		box-shadow: 0 0 14px rgba(255, 200, 80, 0.35), 0 0 0 1px rgba(255, 215, 102, 0.4);
+		text-shadow: 0 0 8px rgba(255, 225, 150, 0.55);
+	}
+	50% {
+		box-shadow: 0 0 26px rgba(255, 210, 100, 0.6), 0 0 0 1px rgba(255, 215, 102, 0.7);
+		text-shadow: 0 0 14px rgba(255, 235, 170, 0.85);
+	}
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* Голосовой диалог в чате (индикатор + кнопка)                    */
+/* ═══════════════════════════════════════════════════════════════ */
+
+.chat-voice-status {
+	margin-left: auto;
+	font-size: 12px;
+	font-weight: 700;
+	color: #9fe8ff;
+	padding: 3px 10px;
+	border-radius: 999px;
+	background: rgba(90, 200, 255, 0.12);
+	border: 1px solid rgba(90, 200, 255, 0.32);
+	animation: voice-breathe 2.4s ease-in-out infinite;
+	white-space: nowrap;
+}
+
+.chat-voice-status.speaking {
+	color: #ffd766;
+	background: rgba(255, 215, 102, 0.14);
+	border-color: rgba(255, 215, 102, 0.4);
+}
+
+@keyframes voice-breathe {
+	0%, 100% { opacity: 0.65; }
+	50% { opacity: 1; }
+}
+
+.chat-voice-toggle {
+	margin-left: 8px;
+	width: 32px;
+	height: 32px;
+	border-radius: 50%;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	background: rgba(255, 255, 255, 0.06);
+	font-size: 15px;
+	line-height: 1;
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: all 0.2s ease;
+}
+
+.chat-voice-toggle:hover:not(:disabled) {
+	border-color: rgba(159, 232, 255, 0.6);
+	background: rgba(90, 200, 255, 0.14);
+	transform: translateY(-1px);
+}
+
+.chat-voice-toggle.on {
+	border-color: rgba(90, 200, 255, 0.75);
+	background: rgba(90, 200, 255, 0.22);
+	box-shadow: 0 0 16px rgba(90, 200, 255, 0.4);
+}
+
+.chat-voice-toggle:disabled {
+	opacity: 0.35;
+	cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* Плавное появление карточек партнёров (inline animationDelay)    */
+/* ═══════════════════════════════════════════════════════════════ */
+
+.pa-card {
+	animation: pa-card-in 0.5s ease-out backwards;
+}
+
+@keyframes pa-card-in {
+	from {
+		opacity: 0;
+		transform: translateY(18px) scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* Advisory-виджеты: недостающие мелкие классы                     */
+/* ═══════════════════════════════════════════════════════════════ */
+
+.wv-risk-label {
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.6);
+	text-align: center;
+	margin-top: -6px;
+}
+
+.wv-advice-card.urgency-high {
+	background: rgba(255, 90, 90, 0.1);
+	border-color: rgba(255, 90, 90, 0.32);
+}
+.wv-advice-card.urgency-medium {
+	background: rgba(255, 179, 71, 0.09);
+	border-color: rgba(255, 179, 71, 0.3);
+}
+.wv-advice-card.urgency-low {
+	background: rgba(125, 255, 138, 0.07);
+	border-color: rgba(125, 255, 138, 0.25);
+}
+
+.wv-advice-deadline {
+	margin-top: 6px;
+	font-size: 12px;
+	font-weight: 700;
+	color: rgba(255, 215, 102, 0.85);
+}
+
+.wv-advice-note {
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px dashed rgba(255, 255, 255, 0.12);
+	font-size: 11px;
+	font-style: italic;
+	color: rgba(255, 255, 255, 0.42);
+}
+
+.od-skill-src {
+	display: flex;
+	align-items: center;
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.5);
+}
+
+/* Бережем пользователей с плохим зрением / укачиванием */
+@media (prefers-reduced-motion: reduce) {
+	.tb.mic,
+	.tb.mic::before,
+	.tb.mic::after,
+	.tab.on,
+	.chat-voice-status,
+	.pa-card,
+	.od-sh-bulb {
+		animation: none !important;
+	}
+	.bg { transition: none; }
+}

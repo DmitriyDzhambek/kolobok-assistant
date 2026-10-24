@@ -124,7 +124,6 @@ function AdminAvatar({
 /* ------------------------------------------------------------------ */
 
 function PartnerAvatarField({
-	partnerId,
 	avatar,
 	onSave,
 	onRemove,
@@ -487,7 +486,7 @@ export function AdminPanel() {
 	const [partners, setPartners] = useState<Partner[]>(loadPartners);
 	const [editingPartner, setEditingPartner] = useState<PartnerEdit | null>(null);
 	const [showForm, setShowForm] = useState(false);
-	const [adminAvatar, setAdminAvatar] = useState<string | null>(loadAdminAvatar);
+	const [adminAvatar] = useState<string | null>(loadAdminAvatar);
 
 	// Реактивное обновление списка из других вкладок
 	useEffect(() => subscribePartners(() => setPartners(loadPartners())), []);

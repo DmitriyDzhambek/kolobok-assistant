@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Kolobok } from "./components/Kolobok";
 import { Background } from "./components/Background";
+import { FirefliesCanvas } from "./components/FirefliesCanvas";
 import { MacroPanel } from "./components/MacroPanel";
 import { RecipePanel } from "./components/RecipePanel";
 import { MorningMagic } from "./components/MorningMagic";
@@ -29,8 +30,8 @@ import {
 	type TaskItem,
 	type Ctx,
 } from "./brain/commands";
-import { getTimeContext, shouldShowGreeting } from "./utils/timeContext";
-import { FirefliesCanvas } from "./components/FirefliesCanvas";
+import { getTimeContext, shouldShowGreeting, type TimeOfDay } from "./utils/timeContext";
+import { usePortfolioStatus } from "./utils/portfolioMood";
 import "./styles.css";
 
 type Chip = {
@@ -127,11 +128,16 @@ export default function App() {
 	const [showHelp, setShowHelp] = useState(false);
 	const [showNotifs, setShowNotifs] = useState(false);
 	const [updateDismissed, setUpdateDismissed] = useState(false);
-	const [greetingDismissed, setGreetingDismissed] = useState(false);
 	const [greetingContext, setGreetingContext] = useState<{
 		greeting: string;
 		systemPrompt: string;
 	} | null>(null);
+	// Время суток влияет на фон и оттенок ауры Колобка.
+	const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(
+		() => getTimeContext().timeOfDay,
+	);
+	// Реакция Колобка на портфель (пишется из Wealth-блока).
+	const portfolioStatus = usePortfolioStatus();
 	const [showMacro, setShowMacro] = useState(() => {
 		try {
 			return (
@@ -185,9 +191,15 @@ export default function App() {
 		initTma();
 	}, []);
 
+	// Обновляем время суток раз в минуту (для смены фона при запуске в другое время).
+	useEffect(() => {
+		const iv = setInterval(() => setTimeOfDay(getTimeContext().timeOfDay), 60_000);
+		return () => clearInterval(iv);
+	}, []);
+
 	// Проактивное приветствие при загрузке
 	useEffect(() => {
-		if (greetingDismissed || !shouldShowGreeting()) return;
+		if (!shouldShowGreeting()) return;
 
 		const ctx = getTimeContext();
 		setGreetingContext({
@@ -211,7 +223,7 @@ export default function App() {
 	const { updateAvailable, installUpdate } = useSWUpdate();
 
 	// Система уведомлений от Колобка.
-	const { notifs, addNotif, markAsRead, dismiss, dismissAll } = useNotifications();
+	const { notifs, markAsRead, dismiss, dismissAll } = useNotifications();
 
 	// Общий «живой канал» с бэкендом стартует сразу (WebSocket + авто-реконнект).
 	useConnection();
@@ -450,8 +462,9 @@ export default function App() {
 		},
 	];
 	return (
-		<div className="app">
+		<div className={`app tod-${timeOfDay}`}>
 			<Background />
+			<FirefliesCanvas />
 
 			{/* Баннер обновления PWA — появляется, когда Service Worker нашёл новую версию */}
 			{updateAvailable && !updateDismissed && (
@@ -502,7 +515,7 @@ export default function App() {
 									👑 Админ
 									<span className="admin-pulse" title="Секретная зона">🔥</span>
 								</>,
-							] as ["main" | "morning" | "chat" | "partners" | "orchestrator" | "admin", React.ReactNode],
+							] as ["main" | "morning" | "chat" | "partners" | "orchestrator" | "admin", ReactNode],
 						] : []),
 					] as ["main" | "morning" | "chat" | "partners" | "orchestrator" | "admin", string][]
 				).map(([id, label]) => (
@@ -527,7 +540,7 @@ export default function App() {
 						exit={{ opacity: 0, y: -10 }}
 						transition={{ duration: 0.18 }}
 					>
-						<Kolobok state={botState} />
+						<Kolobok state={botState} portfolioStatus={portfolioStatus} timeOfDay={timeOfDay} />
 						<div className={`bubble ${botState === "speak" ? "speaking" : ""}`}>
 							<div className="bubble-text">{botText}</div>
 							{botLink && (

@@ -3,7 +3,7 @@
  * Частицы медленно дрейфуют, отталкиваются от курсора и мерцают.
  */
 import { useEffect, useRef } from "react";
-import { motion, useMotionValue, useSpring } from "framer-motion";
+import { motion, useMotionValue } from "framer-motion";
 
 const PARTICLE_COUNT = 28;
 const DRIFT_SPEED = 0.15;

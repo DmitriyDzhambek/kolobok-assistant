@@ -75,55 +75,6 @@ const QUIZ_QUESTIONS: QuizQuestion[] = [
   },
 ];
 
-/* ─────────────────────── Мини-график риска ─────────────────────── */
-
-function RiskGauge({ stress }: { stress: number }) {
-  const angle = (stress / 100) * 180 - 90;
-  const color =
-    stress > 60 ? "#ff5a5a" : stress > 30 ? "#ffb347" : "#7dff8a";
-  return (
-    <svg viewBox="0 0 120 70" className="od-gauge">
-      <defs>
-        <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#7dff8a" />
-          <stop offset="50%" stopColor="#ffb347" />
-          <stop offset="100%" stopColor="#ff5a5a" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M10 60 A50 50 0 0 1 110 60"
-        stroke="rgba(255,255,255,0.08)"
-        strokeWidth="10"
-        fill="none"
-        strokeLinecap="round"
-      />
-      <path
-        d="M10 60 A50 50 0 0 1 110 60"
-        stroke="url(#gaugeGrad)"
-        strokeWidth="10"
-        fill="none"
-        strokeLinecap="round"
-        strokeDasharray={`${(stress / 100) * 157} 157`}
-        style={{ transition: "stroke-dasharray 0.8s ease" }}
-      />
-      <line
-        x1="60"
-        y1="60"
-        x2={60 + 42 * Math.cos((angle * Math.PI) / 180)}
-        y2={60 + 42 * Math.sin((angle * Math.PI) / 180)}
-        stroke={color}
-        strokeWidth="3"
-        strokeLinecap="round"
-        style={{ transition: "all 0.8s ease" }}
-      />
-      <circle cx="60" cy="60" r="4" fill={color} />
-      <text x="60" y="52" textAnchor="middle" fill={color} fontSize="12" fontWeight="800">
-        {stress}%
-      </text>
-    </svg>
-  );
-}
-
 /* ─────────────────────── Главный компонент ─────────────────────── */
 
 export function LifeOrchestratorDashboard() {
@@ -333,6 +284,7 @@ export function LifeOrchestratorDashboard() {
               scenario={scenario}
               onScenarioChange={setScenario}
               demoMode={demoMode}
+              futuresAdvice={plan.futuresAdvice}
             />
 
             {/* ──────────────── БЛОК 2: LIFE (центр) ──────────────── */}
@@ -499,6 +451,18 @@ export function LifeOrchestratorDashboard() {
                   )}
                 </AnimatePresence>
               </div>
+
+              {/* Рекомендованный курс (подбирается по уровню стресса) */}
+              {skill && (
+                <div className="od-skill-card">
+                  <div className="od-skill-emoji">{skill.emoji}</div>
+                  <div className="od-skill-title">{skill.title}</div>
+                  <div className="od-skill-src">
+                    <GraduationCap className="inline w-3.5 h-3.5 mr-1" />
+                    {skill.source} · {skill.duration}
+                  </div>
+                </div>
+              )}
 
               {/* Рекомендации */}
               <div className="od-reco">

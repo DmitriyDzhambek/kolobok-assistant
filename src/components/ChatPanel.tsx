@@ -291,6 +291,28 @@ export function ChatPanel({
 						{voiceStatus}
 					</span>
 				)}
+				<button
+					type="button"
+					className={`chat-voice-toggle ${voiceMode ? "on" : ""}`}
+					disabled={!rec.supported || offline}
+					onClick={() => {
+						setErr(null);
+						setVoiceMode((v) => {
+							// При выключении прекращаем текущее прослушивание.
+							if (v && rec.listening) rec.stop();
+							return !v;
+						});
+					}}
+					title={
+						!rec.supported
+							? "Браузер не поддерживает распознавание речи"
+							: voiceMode
+								? "Выключить голосовой диалог"
+								: "Голосовой диалог: Колобок слушает сам, как Алиса"
+					}
+				>
+					🎙
+				</button>
 			</div>
 
 			<AnimatePresence>

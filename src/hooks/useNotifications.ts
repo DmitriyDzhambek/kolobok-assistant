@@ -6,7 +6,7 @@
  *  - localStorage — история уведомлений и настройки
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 export type Notification = {
 	id: string;
@@ -111,7 +111,6 @@ export function requestNotificationPermission(): Promise<boolean> {
 /** Hook для колобка-уведомлений. */
 export function useNotifications() {
 	const [notifs, setNotifs] = useState<Notification[]>(loadNotifications);
-	const timer = useRef<number | undefined>(undefined);
 
 	// Подписка на localStorage-события (другие вкладки).
 	useEffect(() => {

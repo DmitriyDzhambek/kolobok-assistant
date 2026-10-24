@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
 	CATEGORIES,
@@ -42,7 +42,6 @@ export function RecipePanel({
 	});
 	const [selected, setSelected] = useState<string | null>(initialId ?? null);
 	const [favs, setFavs] = useState<string[]>(loadFavs);
-	const [backView, setBackView] = useState(false);
 
 	const toggleFav = (id: string) => {
 		setFavs((prev) => {

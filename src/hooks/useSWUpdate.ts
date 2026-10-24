@@ -5,7 +5,7 @@
  * и показывает баннер для перезагрузки.
  */
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 
 export function useSWUpdate() {
 	const [updateAvailable, setUpdateAvailable] = useState(false);

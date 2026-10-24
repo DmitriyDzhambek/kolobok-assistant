@@ -5,7 +5,6 @@ import { getTimeContext, shouldShowGreeting, type TimeContext } from "../utils/t
 export function ProactiveGreeting() {
 	const [context, setContext] = useState<TimeContext | null>(null);
 	const [visible, setVisible] = useState(false);
-	const [dismissed, setDismissed] = useState(false);
 
 	useEffect(() => {
 		if (!shouldShowGreeting()) return;
@@ -22,7 +21,6 @@ export function ProactiveGreeting() {
 	}, []);
 
 	const handleDismiss = () => {
-		setDismissed(true);
 		setVisible(false);
 		// Отмечаем, что приветствие показано
 		sessionStorage.setItem("kolobok-greeting-shown", "true");

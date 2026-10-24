@@ -12,11 +12,11 @@
  * Демо-селектор сценариев для питча перед инвестором.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
 	Shield, ShieldCheck, Hourglass, Clock, Umbrella, Landmark,
-	TrendingUp, TrendingDown, Percent, Sparkles, Lock, Wind, Activity
+	TrendingUp, TrendingDown, Lock, Wind, Activity
 } from "lucide-react";
 
 import type { TinkoffPortfolioData, PortfolioAnalysis } from "../modules/portfolio/parser";
@@ -24,6 +24,17 @@ import { findTaxTrap, type TaxShieldResult } from "../modules/advisory/taxShield
 import { getMarketStatus, type MarketInfo } from "../modules/advisory/marketCalendar";
 import { analyzePanicRisk, type BehavioralShieldResult } from "../modules/advisory/behavioralShield";
 import { RelaxAudio } from "../modules/advisory/relaxAudio";
+import { writePortfolioStatus } from "../utils/portfolioMood";
+import type { FuturesAdvice } from "../modules/riskEngine/engine";
+
+/* Человеческие названия действий движка (без торговых кнопок). */
+const ACTION_LABELS: Record<FuturesAdvice["action"], string> = {
+	close: "закрыть позицию",
+	hold: "держать",
+	reduce: "снизить позицию",
+	hedge: "захеджировать",
+	"set-stop": "выставить стоп",
+};
 
 /* ─────────────────────── демо-сценарии ─────────────────────── */
 
@@ -35,6 +46,54 @@ export const SCENARIO_LABELS: Record<WealthScenario, string> = {
 	closed: "🔒 Биржа закрыта",
 	tax: "🛡️ Налоговая ловушка",
 };
+
+/* ─────────────────────── Датчик стресса портфеля ──────────────── */
+
+function RiskGauge({ stress }: { stress: number }) {
+	const angle = (stress / 100) * 180 - 90;
+	const color = stress > 60 ? "#ff5a5a" : stress > 30 ? "#ffb347" : "#7dff8a";
+	return (
+		<svg viewBox="0 0 120 70" className="od-gauge">
+			<defs>
+				<linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
+					<stop offset="0%" stopColor="#7dff8a" />
+					<stop offset="50%" stopColor="#ffb347" />
+					<stop offset="100%" stopColor="#ff5a5a" />
+				</linearGradient>
+			</defs>
+			<path
+				d="M10 60 A50 50 0 0 1 110 60"
+				stroke="rgba(255,255,255,0.08)"
+				strokeWidth="10"
+				fill="none"
+				strokeLinecap="round"
+			/>
+			<path
+				d="M10 60 A50 50 0 0 1 110 60"
+				stroke="url(#gaugeGrad)"
+				strokeWidth="10"
+				fill="none"
+				strokeLinecap="round"
+				strokeDasharray={`${(stress / 100) * 157} 157`}
+				style={{ transition: "stroke-dasharray 0.8s ease" }}
+			/>
+			<line
+				x1="60"
+				y1="60"
+				x2={60 + 42 * Math.cos((angle * Math.PI) / 180)}
+				y2={60 + 42 * Math.sin((angle * Math.PI) / 180)}
+				stroke={color}
+				strokeWidth="3"
+				strokeLinecap="round"
+				style={{ transition: "all 0.8s ease" }}
+			/>
+			<circle cx="60" cy="60" r="4" fill={color} />
+			<text x="60" y="52" textAnchor="middle" fill={color} fontSize="12" fontWeight="800">
+				{stress}%
+			</text>
+		</svg>
+	);
+}
 
 /* ─────────────────────── TaxShield widget ─────────────────────── */
 
@@ -155,7 +214,6 @@ function BehavioralShieldWidget({
 	}
 
 	const isDanger = shield.level === "danger";
-	const isShield = shield.level === "shield";
 
 	return (
 		<div className={`wv-card ${isDanger ? "wv-card--danger" : "wv-card--shield"}`}>
@@ -206,12 +264,14 @@ export function WealthBlock({
 	scenario: propScenario,
 	onScenarioChange,
 	demoMode,
+	futuresAdvice,
 }: {
 	portfolio: TinkoffPortfolioData;
 	analysis: PortfolioAnalysis;
 	scenario: WealthScenario;
 	onScenarioChange: (s: WealthScenario) => void;
 	demoMode: boolean;
+	futuresAdvice?: FuturesAdvice | null;
 }) {
 	const [relaxAudio] = useState(() => new RelaxAudio());
 	const [relaxPlaying, setRelaxPlaying] = useState(false);
@@ -244,6 +304,17 @@ export function WealthBlock({
 		() => analyzePanicRisk(portfolio),
 		[portfolio],
 	);
+
+	// Сообщаем Колобку на главном экране, как ему себя вести (улыбка/грусть).
+	useEffect(() => {
+		const losing = demoMode
+			? propScenario === "loss"
+			: portfolio.pnl < 0;
+		const winning = demoMode ? propScenario === "profit" || propScenario === "tax" : portfolio.pnl > 0;
+		writePortfolioStatus(losing ? "loss" : winning ? "profit" : "neutral");
+		// Останавливаем шум, когда виджет сворачивается.
+		return () => relaxAudio.stop();
+	}, [propScenario, demoMode, portfolio.pnl, relaxAudio]);
 
 	// Моковые данные для демо-сценариев
 	const scenarioData = useMemo(() => {
@@ -295,19 +366,28 @@ export function WealthBlock({
 			? "profit"
 			: "loss";
 
-	// Считаем эффективный PnL для отображения
-	const effectivePnlPercent =
-		effectiveScenario === "profit"
+	const riskColor =
+		analysis.riskLevel === "critical" || analysis.riskLevel === "high"
+			? "#ff5a5a"
+			: analysis.riskLevel === "medium"
+				? "#ffb347"
+				: "#7dff8a";
+
+	// В демо-режиме — витрина сценария, в обычном — только реальные цифры со скриншота.
+	const effectivePnlPercent = demoMode
+		? propScenario === "profit"
 			? 5.2
-			: effectiveScenario === "loss"
+			: propScenario === "loss"
 				? -5.2
-				: portfolio.pnlPercent;
-	const effectivePnl =
-		effectiveScenario === "profit"
-			? portfolio.balance * 0.052
-			: effectiveScenario === "loss"
-				? -portfolio.balance * 0.052
-				: portfolio.pnl;
+				: portfolio.pnlPercent
+		: portfolio.pnlPercent;
+	const effectivePnl = demoMode
+		? propScenario === "profit"
+			? Math.round(portfolio.balance * 0.052)
+			: propScenario === "loss"
+				? -Math.round(portfolio.balance * 0.052)
+				: portfolio.pnl
+		: portfolio.pnl;
 
 	return (
 		<motion.section
@@ -356,12 +436,19 @@ export function WealthBlock({
 					) : (
 						<TrendingDown className="inline w-4 h-4 mr-1" />
 					)}
-					{effectivePnl >= 0 ? "+" : ""}
-					{effectivePnlPercent.toFixed(1)}% за день
-				</div>
-			</div>
+ 					{effectivePnl >= 0 ? "+" : ""}
+ 					{effectivePnlPercent.toFixed(1)}% за день
+ 				</div>
+ 			</div>
 
-			{/* Три виджета */}
+ 			{/* Датчик стресса портфеля */}
+ 			<RiskGauge stress={analysis.stressScore} />
+ 			<div className="wv-risk-label">
+ 				Уровень стресса:{" "}
+ 				<b style={{ color: riskColor }}>{analysis.riskLevel.toUpperCase()}</b>
+ 			</div>
+
+ 			{/* Три виджета */}
 			<div className="wv-widgets">
 				{/* 1. Налоговый щит */}
 				<TaxShieldWidget
@@ -410,24 +497,35 @@ export function WealthBlock({
 				))}
 			</div>
 
-			{/* Совет по фьючерсу (без кнопки «Выполнить») */}
+			{/* Совет движка по фьючерсам — Advisory Mode, без торговых кнопок */}
 			<AnimatePresence>
-				{analysis.stressScore > 30 && (
+				{(futuresAdvice || analysis.stressScore > 30) && (
 					<motion.div
-						className="wv-advice-card"
+						className={`wv-advice-card urgency-${futuresAdvice?.urgency ?? (analysis.stressScore > 60 ? "high" : "medium")}`}
 						initial={{ opacity: 0, height: 0 }}
 						animate={{ opacity: 1, height: "auto" }}
 						exit={{ opacity: 0, height: 0 }}
 					>
 						<div className="wv-advice-headline">
 							<span className="wv-advice-icon">⚡</span>
-							Анализ риска портфеля
+							{futuresAdvice
+								? `${futuresAdvice.ticker} → ${ACTION_LABELS[futuresAdvice.action]}`
+								: "Анализ риска портфеля"}
 						</div>
 						<p className="wv-advice-text">
-							{analysis.stressScore > 60
-								? "Высокий уровень стресса — рекомендуется снизить плечо и пересмотреть стоп-лоссы. Не принимай решений на эмоциях."
-								: "Умеренный риск — текущая стратегия управляема. Продолжай следить за экспирациями и новостным фоном."}
+							{futuresAdvice
+								? futuresAdvice.reason
+								: analysis.stressScore > 60
+									? "Высокий уровень стресса — рекомендуется снизить плечо и пересмотреть стоп-лоссы. Не принимай решений на эмоциях."
+									: "Умеренный риск — текущая стратегия управляема. Продолжай следить за экспирациями и новостным фоном."}
 						</p>
+						{futuresAdvice && (
+							<div className="wv-advice-deadline">⏰ {futuresAdvice.deadline}</div>
+						)}
+						<div className="wv-advice-note">
+							Колобок не торгует за тебя — это совет. Сделку ты открываешь сам в
+							приложении брокера.
+						</div>
 					</motion.div>
 				)}
 			</AnimatePresence>
