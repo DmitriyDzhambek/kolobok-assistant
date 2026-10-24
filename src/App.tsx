@@ -9,6 +9,7 @@ import { ChatPanel } from "./components/ChatPanel";
 import { useSWUpdate } from "./hooks/useSWUpdate";
 import { PartnersPanel } from "./components/PartnersPanel";
 import { AdminPanel } from "./components/AdminPanel";
+import { ProactiveGreeting } from "./components/ProactiveGreeting";
 import {
 	QuickActions,
 	recipeOfTheDay,
@@ -27,6 +28,7 @@ import {
 	type TaskItem,
 	type Ctx,
 } from "./brain/commands";
+import { getTimeContext, shouldShowGreeting } from "./utils/timeContext";
 import "./styles.css";
 
 type Chip = {
@@ -123,6 +125,11 @@ export default function App() {
 	const [showHelp, setShowHelp] = useState(false);
 	const [showNotifs, setShowNotifs] = useState(false);
 	const [updateDismissed, setUpdateDismissed] = useState(false);
+	const [greetingDismissed, setGreetingDismissed] = useState(false);
+	const [greetingContext, setGreetingContext] = useState<{
+		greeting: string;
+		systemPrompt: string;
+	} | null>(null);
 	const [showMacro, setShowMacro] = useState(() => {
 		try {
 			return (
@@ -174,6 +181,28 @@ export default function App() {
 
 	useEffect(() => {
 		initTma();
+	}, []);
+
+	// Проактивное приветствие при загрузке
+	useEffect(() => {
+		if (greetingDismissed || !shouldShowGreeting()) return;
+
+		const ctx = getTimeContext();
+		setGreetingContext({
+			greeting: ctx.greeting,
+			systemPrompt: ctx.systemPrompt,
+		});
+
+		// Озвучка приветствия (если браузер позволяет)
+		const announceGreeting = () => {
+			speakRef.current(ctx.greeting);
+			setBotText(ctx.greeting);
+		};
+
+		// Автоматическая озвучка с задержкой
+		const timer = setTimeout(announceGreeting, 2000);
+
+		return () => clearTimeout(timer);
 	}, []);
 
 	// Проверка обновлений Service Worker (для PWA — расширения на рабочем столе).
@@ -453,6 +482,9 @@ export default function App() {
 				)}
 			</header>
 
+			{/* Проактивное приветствие */}
+			<ProactiveGreeting />
+
 			<nav className="tabs">
 				{(
 					[
@@ -620,8 +652,10 @@ export default function App() {
 						<ChatPanel
 							muted={muted}
 							speak={speak}
+							speaking={botState === "speak"}
 							autoAsk={chatAuto}
 							onAutoAsked={() => setChatAuto(null)}
+							timeContext={greetingContext?.systemPrompt}
 						/>
 					</motion.div>
 				)}

@@ -12,6 +12,16 @@ type Msg = {
 	note?: boolean;
 };
 
+type Props = {
+	muted: boolean;
+	speak: (text: string) => void;
+	speaking: boolean;
+	autoAsk?: string | null;
+	onAutoAsked?: () => void;
+	/** Системный промпт от Колобка (контекст времени суток) */
+	timeContext?: string | null;
+};
+
 const WELCOME =
 	"Привет! Я — Колобок, сказочный, но очень прокачанный ИИ-ассистент. Помогаю зарабатывать (Telegram Mini Apps, инвестиции, курьерство), вести «Магию утра» и не терять мотивацию. Спроси что-нибудь — текстом или голосом!";
 
@@ -79,14 +89,11 @@ function WakeLoader() {
 export function ChatPanel({
 	muted,
 	speak,
+	speaking,
 	autoAsk,
 	onAutoAsked,
-}: {
-	muted: boolean;
-	speak: (text: string) => void;
-	autoAsk?: string | null;
-	onAutoAsked?: () => void;
-}) {
+	timeContext,
+}: Props) {
 	const conn = useConnection();
 	const offline = conn === "offline";
 	const connecting = conn === "connecting";
@@ -102,6 +109,12 @@ export function ChatPanel({
 	msgsRef.current = msgs;
 	const prevConn = useRef<ConnState>("connecting");
 
+	/* ---------- голосовой диалог (как у Алисы) ---------- */
+	const [voiceMode, setVoiceMode] = useState(false);
+	const voiceModeRef = useRef(voiceMode);
+	voiceModeRef.current = voiceMode;
+
+	/* ---------- оффлайн-уведомления ---------- */
 	const addOfflineNote = () =>
 		setMsgs((p) =>
 			p.some((m) => m.id === "note-offline")
@@ -159,7 +172,10 @@ export function ChatPanel({
 				.map((m) => ({ role: m.role, content: m.content }));
 			const r = await apiFetch("/api/chat", {
 				method: "POST",
-				body: JSON.stringify({ messages: payload }),
+				body: JSON.stringify({
+					messages: payload,
+					systemPrompt: timeContext || undefined,
+				}),
 			});
 			const reply =
 				String(r?.reply ?? "").trim() || "Колобок задумался и промолчал…";
@@ -197,12 +213,58 @@ export function ChatPanel({
 
 	const rec = useRecognition({
 		onFinal: (t) => {
+			// Голосовой диалог: останавливаем прослушивание после фразы
+			if (voiceModeRef.current) rec.stop();
 			if (t.trim()) void sendRef.current(t.trim());
 		},
 		onInterim: (t) => setInput(t),
 		onListening: () => setErr(null),
 		onError: () => setErr("Микрофон недоступен — напиши текстом."),
 	});
+
+	/* ---------- цикл голосового диалога ---------- */
+	const voiceTimerRef = useRef<number | undefined>(undefined);
+	useEffect(() => {
+		// Очищаем таймер при размонтировании
+		return () => {
+			if (voiceTimerRef.current) window.clearTimeout(voiceTimerRef.current);
+		};
+	}, []);
+
+	useEffect(() => {
+		if (!voiceMode || !rec.supported) return;
+		if (busy || speaking || offline) return;
+		if (rec.listening) return;
+
+		// Небольшая пауза перед началом прослушивания
+		voiceTimerRef.current = window.setTimeout(() => {
+			try {
+				rec.start();
+			} catch {
+				/* already started */
+			}
+		}, 800);
+
+		return () => {
+			if (voiceTimerRef.current) window.clearTimeout(voiceTimerRef.current);
+		};
+	}, [voiceMode, busy, speaking, offline, rec.listening, rec.supported]);
+
+	// Останавливаем голосовой диалог при ошибках
+	useEffect(() => {
+		if (err) setVoiceMode(false);
+	}, [err]);
+
+	/* ---------- определение статуса голосового диалога ---------- */
+	const voiceStatus = voiceMode
+		? busy
+			? "Думаю…"
+			: speaking
+				? "Говорю…"
+				: rec.listening
+					? "Слушаю…"
+					: "🎙 Жду речи…"
+		: null;
 
 	return (
 		<div className={`chat glass ${offline ? "chat-quiet" : ""}`}>
@@ -224,6 +286,11 @@ export function ChatPanel({
 							? "режим тишины"
 							: "просыпаюсь…"}
 				</span>
+				{voiceMode && (
+					<span className={`chat-voice-status ${speaking ? "speaking" : ""}`}>
+						{voiceStatus}
+					</span>
+				)}
 			</div>
 
 			<AnimatePresence>

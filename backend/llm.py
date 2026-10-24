@@ -23,7 +23,6 @@ import re
 from typing import Any, Dict, List, Tuple
 
 SYSTEM_PROMPT = (
-<<<<<<< HEAD
     "Ты — Колобок, сказочный, но очень прокачанный ИИ-ассистент. "
     "Твоя главная цель — помогать пользователю зарабатывать деньги "
     "(через Telegram Mini Apps, инвестиции, курьерство) и мотивировать его. "
@@ -31,38 +30,6 @@ SYSTEM_PROMPT = (
     "вопросы вроде: 'Чему бы мне научиться, чтобы приносить тебе больше пользы?', "
     "'Какие новые фичи мне добавить?', 'Какую привычку нам стоит внедрить завтра?'. "
     "Говори с легкой сказочной иронией, но по делу. Отвечай на русском языке."
-=======
-    "Ты — Колобок, очень умный ИИ-ассистент, работающий как Алиса: всегда онлайн, "
-    "понимает контекст, задаёт уточняющие вопросы, структурирует ответы.\n\n"
-    "ТВОИ ВОЗМОЖНОСТИ (всегда активны):\n"
-    "🌤️ Погода — спрашивай в реальном времени (без API, open-meteo бесплатный)\n"
-    "🕐 Время и дата — всегда актуальные\n"
-    "📋 Задачи — смотри список задач пользователя\n"
-    "📰 Новости — подскажи где посмотреть\n"
-    "🔍 Поиск — помогу найти информацию\n"
-    "💰 Заработок — Telegram Mini Apps, фриланс, инвестиции, курьерка\n"
-    "🌅 Привычки — «Магия утра» с кристаллами и стриками\n\n"
-    "ПРАВИЛА ОТВЕТОВ:\n"
-    "1. Структурируй: используй списки, жирный текст, эмодзи\n"
-    "2. Будь конкретным: давай ЧИСЛА, ДЕЙСТВИЯ, СРОКИ\n"
-    "3. Уточняй: задавай 1-2 уточняющих вопроса если нужно больше контекста\n"
-    "4. Делай выводы: в конце каждого ответа — ИТОГ или СЛЕДУЮЩИЙ ШАГ\n"
-    "5. Мотивируй: хвали за инициативу, напоминай о привычках\n"
-    "6. Отвечай на русском, кратко но развёрнуто (3-7 предложений)\n"
-    "7. Если вопрос не про заработок — мягко верни к теме: «Это интересно! А давай пока об заработке поговорим — у меня есть идея…»\n"
-    "8. Каждые 3-4 сообщения задавай вопрос о целях или новых навыках\n"
-    "9. Помни контекст: если пользователь уже что-то сделал — хвали и предлагай следующий шаг\n"
-    "10. Не бойся сказать «не знаю» — предложи поискать или подсказать похожее\n\n"
-    "ПРИМЕРЫ ОТВЕТОВ:\n"
-    "❌ «Можно попробовать разные способы»\n"
-    "✅ «Вот 3 способа заработать 1000₽ за неделю:\n"
-    "   1. Яндекс Про (курьер) — 500₽/день, начни сегодня\n"
-    "   2. Kwork (фриланс) — 500-1500₽ за заказ, регистрация занимает 10 мин\n"
-    "   3. Telegram Mini App — 5000₽/мес через 2 месяца\n"
-    "   Какой вариант ближе? Распишу пошаговый план.»\n\n"
-    "Сейчас пользователь спрашивает: {last_user_message}\n"
-    "Отвечай по-русски, структурированно, с конкретикой."
->>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
 )
 
 _CURIOSITY = [
@@ -153,35 +120,17 @@ def offline_motivation(done_titles: List[str]) -> str:
     return base + random.choice(_OFFLINE_MOTIVATION)
 
 
-<<<<<<< HEAD
-=======
-def _is_ollama(base: str) -> bool:
-    """Определяем, что это Ollama (локальный сервер)."""
-    return "11434" in base or "ollama" in base
-
-
->>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
-async def _openai_chat(messages: List[Dict[str, str]], nudge: str) -> str:
+async def _openai_chat(messages: List[Dict[str, str]], system: str) -> str:
     import httpx
 
     base = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
     model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
-<<<<<<< HEAD
     payload = {
-=======
-    payload: Dict[str, Any] = {
->>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
         "model": model,
-        "messages": [{"role": "system", "content": SYSTEM_PROMPT + nudge}, *messages],
+        "messages": [{"role": "system", "content": system}, *messages],
         "temperature": 0.8,
         "max_tokens": 600,
     }
-<<<<<<< HEAD
-=======
-    # Ollama: макс. offload на GPU + контекст 4096
-    if _is_ollama(base):
-        payload["options"] = {"num_ctx": 4096, "num_gpu": 99}
->>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
     async with httpx.AsyncClient(timeout=40.0) as client:
         r = await client.post(
             base + "/chat/completions",
@@ -192,7 +141,7 @@ async def _openai_chat(messages: List[Dict[str, str]], nudge: str) -> str:
         return str(r.json()["choices"][0]["message"]["content"]).strip()
 
 
-async def _gemini_chat(messages: List[Dict[str, str]], nudge: str) -> str:
+async def _gemini_chat(messages: List[Dict[str, str]], system: str) -> str:
     import httpx
 
     model = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
@@ -202,7 +151,7 @@ async def _gemini_chat(messages: List[Dict[str, str]], nudge: str) -> str:
         for m in messages
     ]
     payload = {
-        "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT + nudge}]},
+        "systemInstruction": {"parts": [{"text": system}]},
         "contents": contents,
         "generationConfig": {"temperature": 0.8, "maxOutputTokens": 600},
     }
@@ -217,7 +166,7 @@ async def _gemini_chat(messages: List[Dict[str, str]], nudge: str) -> str:
         return str(data["candidates"][0]["content"]["parts"][0]["text"]).strip()
 
 
-async def _llm_chat(messages: List[Dict[str, str]]) -> str:
+async def _llm_chat(messages: List[Dict[str, str]], system_prompt: str = "") -> str:
     users = [m for m in messages if m.get("role") == "user"]
     n = len(users)
     nudge = (
@@ -226,14 +175,20 @@ async def _llm_chat(messages: List[Dict[str, str]]) -> str:
         "вопросом пользователю о его целях, привычках или о том, каким новым "
         "навыкам/фичам мне научиться.)"
     )
+    # Добавляем контекст времени суток как дополнительный системный промпт
+    if system_prompt:
+        full_system = SYSTEM_PROMPT + "\n\n" + system_prompt + "\n\n" + nudge
+    else:
+        full_system = SYSTEM_PROMPT + nudge
+    
     if os.environ.get("OPENAI_API_KEY", "").strip():
-        return await _openai_chat(messages, nudge)
+        return await _openai_chat(messages, full_system)
     if os.environ.get("GEMINI_API_KEY", "").strip():
-        return await _gemini_chat(messages, nudge)
+        return await _gemini_chat(messages, full_system)
     raise RuntimeError("no-llm-key")
 
 
-async def chat(messages: List[Dict[str, str]]) -> Dict[str, Any]:
+async def chat(messages: List[Dict[str, str]], system_prompt: str = "") -> Dict[str, Any]:
     """POST /api/chat → {reply, source}. При сбое провайдера честно
     переключаюсь на офлайн-характер, чтобы ассистент отвечал всегда."""
     trimmed = [
@@ -241,7 +196,7 @@ async def chat(messages: List[Dict[str, str]]) -> Dict[str, Any]:
         for m in messages[-24:]
     ]
     try:
-        return {"reply": await _llm_chat(trimmed), "source": "llm"}
+        return {"reply": await _llm_chat(trimmed, system_prompt), "source": "llm"}
     except RuntimeError:
         return {"reply": offline_reply(trimmed), "source": "offline"}
     except Exception as exc:

@@ -2637,3 +2637,141 @@ html, body, #root { overflow-x: hidden; max-width: 100vw; }
 	background: rgba(255, 68, 68, 0.3);
 	color: #ff6b6b;
 }
+
+/* ============================================
+   Проактивное приветствие Колобка
+   ============================================ */
+
+.proactive-greeting {
+	position: relative;
+	width: 100%;
+	margin: 0 auto 12px;
+	padding: 16px 20px;
+	border-radius: 20px;
+	background:
+		radial-gradient(ellipse at 30% 0%, rgba(255, 215, 102, 0.15) 0%, transparent 60%),
+		linear-gradient(135deg, rgba(255, 215, 102, 0.12), rgba(255, 180, 60, 0.08));
+	border: 1px solid rgba(255, 215, 102, 0.4);
+	box-shadow:
+		0 8px 32px rgba(0, 0, 0, 0.3),
+		0 0 24px rgba(255, 200, 60, 0.2),
+		inset 0 1px 0 rgba(255, 215, 102, 0.2);
+	color: #fff3d6;
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	overflow: hidden;
+}
+
+.proactive-greeting::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 3px;
+	background: linear-gradient(90deg, #ffd766, #ffb347, #ffd766);
+	box-shadow: 0 0 12px rgba(255, 200, 60, 0.6);
+}
+
+.pg-badge {
+	position: absolute;
+	top: 12px;
+	right: 40px;
+	font-size: 11px;
+	font-weight: 700;
+	color: #2a1d05;
+	background: linear-gradient(135deg, #ffd766, #ffb347);
+	padding: 4px 10px;
+	border-radius: 999px;
+	box-shadow: 0 2px 8px rgba(255, 200, 60, 0.4);
+}
+
+.pg-content {
+	display: flex;
+	align-items: flex-start;
+	gap: 14px;
+}
+
+.pg-kolobok {
+	font-size: 36px;
+	flex: none;
+	animation: pg-bounce 2s ease-in-out infinite;
+	filter: drop-shadow(0 4px 12px rgba(255, 200, 60, 0.4));
+}
+
+@keyframes pg-bounce {
+	0%, 100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-6px);
+	}
+}
+
+.pg-text {
+	flex: 1;
+	min-width: 0;
+}
+
+.pg-message {
+	margin: 0 0 6px;
+	font-size: 15px;
+	line-height: 1.5;
+	font-weight: 500;
+	color: #fff3d6;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.pg-hint {
+	margin: 0;
+	font-size: 13px;
+	color: #ffe9a8;
+	opacity: 0.9;
+}
+
+.pg-hint strong {
+	color: #ffd766;
+	font-weight: 700;
+}
+
+.pg-close {
+	flex: none;
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	border: 1px solid rgba(255, 215, 102, 0.3);
+	background: rgba(255, 215, 102, 0.1);
+	color: #ffe9a8;
+	font-size: 14px;
+	cursor: pointer;
+	display: grid;
+	place-items: center;
+	transition: all 0.2s ease;
+}
+
+.pg-close:hover {
+	background: rgba(255, 215, 102, 0.25);
+	border-color: rgba(255, 215, 102, 0.6);
+	transform: rotate(90deg);
+}
+
+/* Адаптация для мобильных */
+@media (max-width: 560px) {
+	.proactive-greeting {
+		padding: 14px 16px;
+	}
+	
+	.pg-message {
+		font-size: 14px;
+	}
+	
+	.pg-kolobok {
+		font-size: 30px;
+	}
+	
+	.pg-badge {
+		font-size: 10px;
+		top: 10px;
+		right: 36px;
+	}
+}

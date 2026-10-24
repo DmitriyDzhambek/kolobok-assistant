@@ -91,13 +91,9 @@ function PartnerCard({ partner, index }: { partner: Partner; index: number }) {
 	const initial = (partner.name || "?").charAt(0).toUpperCase();
 
 	return (
-		<motion.article
+		<article
 			className="pa-card"
-			initial={{ opacity: 0, y: 18, scale: 0.97 }}
-			animate={{ opacity: 1, y: 0, scale: 1 }}
-			exit={{ opacity: 0, y: -8 }}
-			transition={{ duration: 0.35, delay: index * 0.07, type: "spring" as const }}
-			whileHover={{ y: -4, scale: 1.015 }}
+			style={{ animationDelay: `${index * 0.07}s` }}
 		>
 			{/* Бейдж Mini App — правый верхний угол */}
 			<span className="pa-badge">✈️ Mini App</span>
@@ -159,7 +155,7 @@ function PartnerCard({ partner, index }: { partner: Partner; index: number }) {
 				<span className="pa-link-text">Открыть</span>
 				<span className="pa-link-arrow">→</span>
 			</a>
-		</motion.article>
+		</article>
 	);
 }
 
