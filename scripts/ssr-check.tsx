@@ -24,6 +24,7 @@ const checks: [string, boolean][] = [
 	],
 	["background stars", html.includes("star")],
 	["forest", html.includes("forest")],
+<<<<<<< HEAD
 	[
 		"quick actions grid",
 		html.includes("quick-grid") && html.includes("Рецепт дня"),
@@ -36,6 +37,8 @@ const checks: [string, boolean][] = [
 		"no technical hints in UI",
 		!html.includes("start_backend") && !html.includes("macro_server.py"),
 	],
+=======
+>>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
 ];
 let fail = 0;
 for (const [name, ok] of checks) {

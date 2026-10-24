@@ -1248,10 +1248,55 @@ body {
 	border: 1px solid rgba(255, 205, 90, .5);
 	border-radius: 20px;
 	box-shadow: 0 12px 44px rgba(0, 0, 0, .5), 0 0 26px rgba(255, 200, 60, .14), inset 0 1px 0 rgba(255, 255, 255, .06);
-	max-height: min(72vh, 660px);
+	max-height: calc(100vh - 340px);
+	min-height: 280px;
 	overflow-y: auto;
 	scrollbar-width: thin;
+	scrollbar-color: rgba(255, 205, 90, 0.5) rgba(255, 255, 255, 0.06);
+	padding-bottom: 120px;
 }
+.recipe-panel::-webkit-scrollbar { width: 6px; }
+.recipe-panel::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.06); border-radius: 3px; }
+.recipe-panel::-webkit-scrollbar-thumb {
+	background: linear-gradient(180deg, rgba(255, 205, 90, 0.7), rgba(255, 150, 50, 0.5));
+	border-radius: 3px;
+	box-shadow: 0 0 8px rgba(255, 200, 60, 0.4);
+}
+.recipe-panel::-webkit-scrollbar-thumb:hover {
+	background: linear-gradient(180deg, rgba(255, 215, 102, 0.9), rgba(255, 170, 60, 0.7));
+}
+
+/* Кнопка «Колобок катится назад» */
+.rp-back-btn {
+	display: inline-flex; align-items: center; gap: 10px;
+	margin-bottom: 12px; padding: 8px 16px 8px 10px;
+	border-radius: 999px; cursor: pointer;
+	border: 1px solid rgba(255, 205, 90, 0.4);
+	background: rgba(255, 205, 90, 0.08);
+	color: #ffd76a; font-size: 14px; font-family: inherit;
+	transition: background 0.2s, box-shadow 0.2s;
+}
+.rp-back-btn:hover {
+	background: rgba(255, 205, 90, 0.18);
+	box-shadow: 0 0 14px rgba(255, 200, 60, 0.3);
+}
+.rp-back-ball {
+	display: inline-block; width: 32px; height: 32px;
+	border-radius: 50%; font-size: 26px; line-height: 32px;
+	text-align: center;
+	background: radial-gradient(circle at 40% 35%, #ffe066, #f0b030 70%, #c8801a);
+	box-shadow: 0 2px 8px rgba(200, 130, 30, 0.5), inset 0 -2px 6px rgba(180, 100, 0, 0.3);
+	transition: transform 0.3s ease;
+}
+.rp-back-ball:hover { transform: rotate(20deg) scale(1.1); }
+.rp-ball-roll { animation: rp-ball-roll 0.6s ease-in-out; }
+@keyframes rp-ball-roll {
+	0% { transform: rotate(0deg) translateX(0); }
+	50% { transform: rotate(360deg) translateX(10px); }
+	100% { transform: rotate(720deg) translateX(0); }
+}
+.rp-back-text { font-weight: 600; letter-spacing: 0.3px; }
+
 .rp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .rp-title { font-weight: 800; font-size: 19px; color: #ffd76a; letter-spacing: .3px; }
 .rp-sub { font-size: 12px; color: #93a9dd; margin-top: 2px; }
@@ -1292,20 +1337,44 @@ body {
 	background: rgba(255, 205, 90, .1); border: 1px dashed rgba(255, 205, 90, .45);
 	color: #ffe6a3; font-size: 13px;
 }
-.rp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+
+/* Сетка карточек рецептов — glassmorphism как «Быстрые действия» */
+.rp-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: 12px;
+}
 .rp-item {
 	position: relative; text-align: left; cursor: pointer;
-	display: flex; flex-direction: column; gap: 4px;
-	padding: 10px 12px; border-radius: 14px;
-	background: rgba(255, 255, 255, .05);
-	border: 1px solid rgba(147, 169, 221, .3);
-	color: #eaf1ff;
+	display: flex; align-items: center; gap: 12px;
+	min-height: 80px; padding: 14px; border-radius: 18px;
+	background: rgba(255, 255, 255, 0.06);
+	backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+	border: 1px solid rgba(160, 140, 255, 0.28);
+	color: #eaf1ff; font: inherit;
+	transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
-.rp-item:hover { border-color: rgba(255, 205, 90, .6); background: rgba(255, 205, 90, .08); }
-.rp-item-ico { font-size: 26px; }
-.rp-item-name { font-weight: 700; font-size: 14px; }
-.rp-item-meta { font-size: 11px; color: #93a9dd; }
-.rp-item-fav { position: absolute; top: 8px; right: 10px; color: #ff6b8a; font-size: 14px; }
+.rp-item:hover, .rp-item:focus-visible {
+	border-color: rgba(255, 215, 102, 0.75);
+	box-shadow: 0 0 18px rgba(255, 200, 60, 0.22);
+	background: rgba(255, 215, 102, 0.07);
+	outline: none;
+}
+.rp-item-ico {
+	flex: none; width: 44px; height: 44px; border-radius: 14px;
+	display: grid; place-items: center; font-size: 24px;
+	background: radial-gradient(circle at 35% 30%, rgba(255, 215, 102, 0.25), rgba(255, 215, 102, 0.05));
+	border: 1px solid rgba(255, 215, 102, 0.4);
+}
+.rp-item-name { font-weight: 800; font-size: 14px; display: block; }
+.rp-item-desc { font-size: 12px; color: #9fb0e0; line-height: 1.35; display: block; margin-top: 2px; }
+.rp-item-arrow {
+	flex: none; margin-left: auto; color: #ffd76a; font-size: 20px; opacity: 0.7;
+	transition: transform 0.2s, opacity 0.2s;
+}
+.rp-item:hover .rp-item-arrow {
+	opacity: 1; transform: translateX(4px);
+}
 
 /* карточка блюда */
 .rp-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
@@ -1517,4 +1586,323 @@ html, body, #root { overflow-x: hidden; max-width: 100vw; }
 	.quick-grid { grid-template-columns: 1fr; }
 	.quick-card { min-height: 92px; }
 	.habits-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+
+/* ===== Вкладка «Заработок» (Telegram Mini Apps) ===== */
+.partners {
+	padding: 20px;
+}
+.partners-head {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	margin-bottom: 20px;
+	padding-bottom: 14px;
+	border-bottom: 1px solid rgba(255, 215, 102, 0.2);
+}
+.partners-ico {
+	font-size: 32px;
+}
+.partners-title {
+	font-size: 20px;
+	font-weight: 800;
+	color: #ffd76a;
+	letter-spacing: 0.3px;
+}
+.partners-sub {
+	font-size: 13px;
+	color: #93a9dd;
+	margin-top: 3px;
+	line-height: 1.4;
+}
+.partners-grid {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+/* Карточка Mini App */
+.partner-card {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 16px;
+	border-radius: 18px;
+	background: rgba(255, 255, 255, 0.06);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	border: 1px solid rgba(160, 140, 255, 0.28);
+	color: #eaf1ff;
+	text-decoration: none;
+	transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+	cursor: pointer;
+}
+.partner-card:hover,
+.partner-card:focus-visible {
+	border-color: rgba(255, 215, 102, 0.75);
+	box-shadow: 0 0 18px rgba(255, 200, 60, 0.22);
+	background: rgba(255, 215, 102, 0.07);
+	outline: none;
+}
+
+/* Верхняя часть: иконка + бейдж */
+.pc-top {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+}
+
+/* Умная иконка */
+.icon-placeholder,
+.icon-image {
+	width: 56px;
+	height: 56px;
+	border-radius: 50%;
+	display: grid;
+	place-items: center;
+	font-size: 26px;
+	font-weight: 800;
+	color: #2a1d05;
+	background: radial-gradient(circle at 35% 30%, #ffe9a8, #ffd05e 60%, #f0b030);
+	box-shadow: 0 0 14px rgba(255, 200, 60, 0.45);
+	border: 2px solid rgba(255, 215, 102, 0.6);
+	flex: none;
+}
+.icon-image img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	border-radius: 50%;
+}
+.pc-body {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.pc-title {
+	font-weight: 800;
+	font-size: 16px;
+	color: #ffffff;
+}
+.pc-desc {
+	font-size: 13px;
+	color: #9fb0e0;
+	line-height: 1.35;
+}
+.pc-reward {
+	font-size: 12px;
+	font-weight: 700;
+	color: #ffd76a;
+	background: rgba(255, 215, 102, 0.12);
+	border: 1px solid rgba(255, 215, 102, 0.3);
+	border-radius: 999px;
+	padding: 4px 12px;
+	align-self: flex-start;
+}
+.pc-go {
+	font-size: 14px;
+	font-weight: 700;
+	color: #ffd76a;
+	opacity: 0.9;
+	transition: opacity 0.2s;
+}
+.partner-card:hover .pc-go {
+	opacity: 1;
+}
+
+/* Бейдж Telegram */
+.tg-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 11px;
+	font-weight: 700;
+	color: #0088cc;
+	background: rgba(0, 136, 204, 0.12);
+	border: 1px solid rgba(0, 136, 204, 0.3);
+	border-radius: 999px;
+	padding: 4px 10px;
+	margin-left: auto;
+	white-space: nowrap;
+}
+
+/* Промокод и доход */
+.pc-promo {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+	font-size: 13px;
+}
+.pc-promo-label {
+	color: #9fb0e0;
+	font-weight: 600;
+}
+.pc-promo-code {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 10px;
+	border-radius: 8px;
+	border: 1px dashed rgba(255, 215, 102, 0.5);
+	background: rgba(255, 215, 102, 0.1);
+	color: #ffd76a;
+	font-weight: 800;
+	font-size: 13px;
+	cursor: pointer;
+	transition: background 0.2s, border-color 0.2s;
+	font-family: inherit;
+}
+.pc-promo-code:hover {
+	background: rgba(255, 215, 102, 0.2);
+	border-color: rgba(255, 215, 102, 0.8);
+}
+.pc-promo-reward {
+	font-size: 11px;
+	color: #7dff8a;
+	font-weight: 600;
+}
+.pc-income {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	border-radius: 10px;
+	background: rgba(120, 255, 140, 0.08);
+	border: 1px solid rgba(120, 255, 140, 0.25);
+	font-size: 13px;
+	color: #b8f0c8;
+}
+.pc-income-ico {
+	font-size: 16px;
+}
+
+/* Примечание */
+.partners-note {
+	margin-top: 20px;
+	padding: 14px 16px;
+	border-radius: 14px;
+	font-size: 13px;
+	line-height: 1.5;
+	color: #cdd6f6;
+	background: rgba(255, 215, 102, 0.08);
+	border: 1px solid rgba(255, 215, 102, 0.2);
+}
+.partners-note small {
+	opacity: 0.7;
+	display: block;
+	margin-top: 6px;
+}
+
+/* Загрузка аватарки партнёра */
+.avatar-wrap {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+}
+.avatar-circle {
+	position: absolute;
+	inset: 0;
+	border-radius: 50%;
+	overflow: hidden;
+}
+.avatar-img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	border-radius: 50%;
+}
+.avatar-overlay {
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.55);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	opacity: 0;
+	transition: opacity 0.2s;
+}
+.avatar-wrap:hover .avatar-overlay {
+	opacity: 1;
+}
+.avatar-btn-remove {
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	border: none;
+	background: rgba(255, 80, 80, 0.9);
+	color: #fff;
+	font-size: 14px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.avatar-placeholder {
+	width: 100%;
+	height: 100%;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.08);
+	border: 1px dashed rgba(255, 215, 102, 0.4);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 18px;
+	cursor: pointer;
+	transition: background 0.2s, border-color 0.2s;
+}
+.avatar-placeholder:hover {
+	background: rgba(255, 215, 102, 0.15);
+	border-color: rgba(255, 215, 102, 0.7);
+}
+.avatar-tooltip {
+	position: absolute;
+	bottom: -24px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: rgba(0, 0, 0, 0.8);
+	color: #ffd76a;
+	font-size: 10px;
+	padding: 3px 8px;
+	border-radius: 6px;
+	white-space: nowrap;
+	pointer-events: none;
+}
+
+/* Мобильная адаптация */
+@media (max-width: 560px) {
+	.partners {
+		padding: 16px;
+	}
+	.partners-grid {
+		gap: 12px;
+	}
+	.partner-card {
+		padding: 14px;
+	}
+	.icon-placeholder,
+	.icon-image {
+		width: 48px;
+		height: 48px;
+		font-size: 22px;
+	}
+	.pc-title {
+		font-size: 15px;
+	}
+	.pc-desc {
+		font-size: 12px;
+	}
+	.pc-reward {
+		font-size: 11px;
+	}
+	.tg-badge {
+		font-size: 10px;
+		padding: 3px 8px;
+	}
 }

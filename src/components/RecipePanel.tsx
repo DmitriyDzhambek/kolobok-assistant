@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
 	CATEGORIES,
@@ -42,6 +42,7 @@ export function RecipePanel({
 	});
 	const [selected, setSelected] = useState<string | null>(initialId ?? null);
 	const [favs, setFavs] = useState<string[]>(loadFavs);
+	const [backView, setBackView] = useState(false);
 
 	const toggleFav = (id: string) => {
 		setFavs((prev) => {
@@ -74,6 +75,16 @@ export function RecipePanel({
 		? (RECIPES.find((r) => r.id === selected) ?? null)
 		: null;
 	const isFav = rec ? favs.includes(rec.id) : false;
+
+	/* Анимация «Колобка» при нажатии «Назад» */
+	const [kolobokRoll, setKolobokRoll] = useState(false);
+	const handleBack = () => {
+		setKolobokRoll(true);
+		setTimeout(() => {
+			setSelected(null);
+			setKolobokRoll(false);
+		}, 600);
+	};
 
 	return (
 		<motion.aside
@@ -166,7 +177,7 @@ export function RecipePanel({
 						{rec.tip && <div className="rp-tip">💡 {rec.tip}</div>}
 
 						<div className="rp-actions">
-							<button className="rp-back" onClick={() => setSelected(null)}>
+							<button className="rp-back" onClick={handleBack}>
 								← К списку
 							</button>
 							<button
@@ -186,6 +197,20 @@ export function RecipePanel({
 						exit={{ opacity: 0, x: 26 }}
 						transition={{ duration: 0.18 }}
 					>
+						{/* Кнопка «Колобок катится назад» */}
+						<button
+							className="rp-back-btn"
+							onClick={onClose}
+							title="Колобок катится назад"
+						>
+							<span
+								className={`rp-back-ball ${kolobokRoll ? "rp-ball-roll" : ""}`}
+							>
+								🟡
+							</span>
+							<span className="rp-back-text">Колобок катится назад</span>
+						</button>
+
 						<div className="rp-search">
 							<span className="rp-search-ico">🔎</span>
 							<input
@@ -233,14 +258,8 @@ export function RecipePanel({
 								>
 									<span className="rp-item-ico">{r.emoji}</span>
 									<span className="rp-item-name">{r.title}</span>
-									<span className="rp-item-meta">
-										⏱ {r.time} · {r.difficulty}
-									</span>
-									{favs.includes(r.id) && (
-										<span className="rp-item-fav" title="В избранном">
-											♥
-										</span>
-									)}
+									<span className="rp-item-desc">{r.subtitle}</span>
+									<span className="rp-item-arrow">→</span>
 								</motion.button>
 							))}
 						</div>

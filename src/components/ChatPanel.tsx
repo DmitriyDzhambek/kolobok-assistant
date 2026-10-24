@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiFetch, isNetworkError } from "../api/client";
 import { useConnection, type ConnState } from "../net/connection";
@@ -15,8 +15,6 @@ type Msg = {
 const WELCOME =
 	"Привет! Я — Колобок, сказочный, но очень прокачанный ИИ-ассистент. Помогаю зарабатывать (Telegram Mini Apps, инвестиции, курьерство), вести «Магию утра» и не терять мотивацию. Спроси что-нибудь — текстом или голосом!";
 
-/** Ровно тот текст, который видит пользователь при потере связи.
- * Никаких команд, путей к файлам и красных алертов. */
 const OFFLINE_NOTE =
 	"Ой, кажется, я потерял связь с волшебным лесом (сервером). Но ты не расстраивайся! Я уже чиню свои невидимые шестеренки. Попробуй написать мне чуть позже.";
 
@@ -32,34 +30,19 @@ function uid() {
 	return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
-/** Маленькое лицо Колобка — аватар сообщений ассистента. */
 function KolobokFace({ size = 24 }: { size?: number }) {
 	return (
 		<svg viewBox="0 0 32 32" width={size} height={size} aria-hidden>
-			<circle
-				cx="16"
-				cy="16"
-				r="14.5"
-				fill="#ffd76a"
-				stroke="#e0a72e"
-				strokeWidth="1.4"
-			/>
+			<circle cx="16" cy="16" r="14.5" fill="#ffd76a" stroke="#e0a72e" strokeWidth="1.4" />
 			<circle cx="11.3" cy="13" r="1.9" fill="#3a2a10" />
 			<circle cx="20.7" cy="13" r="1.9" fill="#3a2a10" />
-			<path
-				d="M10 20 Q16 25.5 22 20"
-				stroke="#3a2a10"
-				strokeWidth="1.9"
-				fill="none"
-				strokeLinecap="round"
-			/>
+			<path d="M10 20 Q16 25.5 22 20" stroke="#3a2a10" strokeWidth="1.9" fill="none" strokeLinecap="round" />
 			<circle cx="7.5" cy="18" r="2" fill="#ffb347" opacity="0.55" />
 			<circle cx="24.5" cy="18" r="2" fill="#ffb347" opacity="0.55" />
 		</svg>
 	);
 }
 
-/** Спящий Колобок с золотыми звёздочками — состояние подключения. */
 function WakeLoader() {
 	return (
 		<div className="chat-wake" aria-live="polite">
@@ -71,47 +54,16 @@ function WakeLoader() {
 							<stop offset="100%" stopColor="#f5b83d" />
 						</radialGradient>
 					</defs>
-					<circle
-						cx="32"
-						cy="32"
-						r="27"
-						fill="url(#wakeGrad)"
-						stroke="#e0a72e"
-						strokeWidth="1.6"
-					/>
-					<path
-						d="M19 28 q4.5 4.5 9 0"
-						stroke="#5a3d12"
-						strokeWidth="2.6"
-						fill="none"
-						strokeLinecap="round"
-					/>
-					<path
-						d="M36 28 q4.5 4.5 9 0"
-						stroke="#5a3d12"
-						strokeWidth="2.6"
-						fill="none"
-						strokeLinecap="round"
-					/>
-					<path
-						d="M24 43 q8 5 16 0"
-						stroke="#5a3d12"
-						strokeWidth="2.6"
-						fill="none"
-						strokeLinecap="round"
-					/>
+					<circle cx="32" cy="32" r="27" fill="url(#wakeGrad)" stroke="#e0a72e" strokeWidth="1.6" />
+					<path d="M19 28 q4.5 4.5 9 0" stroke="#5a3d12" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+					<path d="M36 28 q4.5 4.5 9 0" stroke="#5a3d12" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+					<path d="M24 43 q8 5 16 0" stroke="#5a3d12" strokeWidth="2.6" fill="none" strokeLinecap="round" />
 					<circle cx="18" cy="37" r="3.4" fill="#ffb347" opacity="0.5" />
 					<circle cx="46" cy="37" r="3.4" fill="#ffb347" opacity="0.5" />
 				</svg>
-				<span className="wake-star s1" aria-hidden>
-					✦
-				</span>
-				<span className="wake-star s2" aria-hidden>
-					✦
-				</span>
-				<span className="wake-star s3" aria-hidden>
-					✦
-				</span>
+				<span className="wake-star s1" aria-hidden>✦</span>
+				<span className="wake-star s2" aria-hidden>✦</span>
+				<span className="wake-star s3" aria-hidden>✦</span>
 			</div>
 			<motion.div
 				className="wake-text"
@@ -124,10 +76,6 @@ function WakeLoader() {
 	);
 }
 
-/** Чат с «мозгами» Колобка: стеклянные панели, текст + голос.
- * Связь — через общий useConnection: во время подключения спящий Колобок,
- * при потере — «режим тишины» с волшебной заметкой и мягко заблокированным
- * вводом, при восстановлении — радостное сообщение. Без технических текстов. */
 export function ChatPanel({
 	muted,
 	speak,
@@ -169,7 +117,6 @@ export function ChatPanel({
 					],
 		);
 
-	// Связь пропала/вернулась — волшебные заметки вместо красных алертов.
 	useEffect(() => {
 		const prev = prevConn.current;
 		prevConn.current = conn;
@@ -220,8 +167,6 @@ export function ChatPanel({
 			if (!muted) speak(reply);
 		} catch (e) {
 			if (isNetworkError(e)) {
-				// Связь оборвалась прямо во время отправки — волшебная заметка,
-				// текст возвращается в поле ввода.
 				setMsgs((p) => [
 					...p.filter((x) => x.id !== user.id && x.id !== "note-offline"),
 					{
@@ -243,7 +188,6 @@ export function ChatPanel({
 	const sendRef = useRef(send);
 	sendRef.current = send;
 
-	// «Быстрый вопрос» с карточки главного экрана (QuickActions).
 	useEffect(() => {
 		if (!autoAsk) return;
 		onAutoAsked?.();

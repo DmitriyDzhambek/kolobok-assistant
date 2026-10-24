@@ -9,8 +9,11 @@ FastAPI-бэкенд, который:
   * POST /api/stop        — остановить любую операцию;
   * GET  /api/status      — текущее состояние для фронтенда;
   * GET  /api/macro       — метаданные последнего макроса;
+<<<<<<< HEAD
   * WS   /ws              — «живой канал»: hello/pong для статуса связи и авто-реконнекта
                             фронтенда (useConnection каждые 5 с пытается вернуться);
+=======
+>>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
   * POST /api/chat        — диалог с Колобком (LLM по ключу OPENAI_API_KEY/GEMINI_API_KEY
                             или встроенный офлайн-характер без ключей);
   * GET/POST/PATCH/DELETE /api/habits… — «Магия утра»: привычки, отметки дня, стрики;
@@ -42,9 +45,21 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+<<<<<<< HEAD
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+=======
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+from dotenv import load_dotenv
+
+# Загружаем переменные из .env (ключи LLM, порты и т.д.)
+_ENV = BASE_DIR / ".env"
+if _ENV.is_file():
+    load_dotenv(_ENV)
+>>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
 
 BASE_DIR = Path(__file__).resolve().parent
 MACRO_DIR = BASE_DIR / "macros"
@@ -351,6 +366,7 @@ class Engine:
 
 engine = Engine()
 
+<<<<<<< HEAD
 
 class Hub:
     """Клиенты «живого канала» /ws — для статуса связи на фронтенде."""
@@ -374,6 +390,8 @@ class Hub:
 
 hub = Hub()
 
+=======
+>>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
 app = FastAPI(title="Колобок — макросы, привычки и LLM-чат", version="1.1.0")
 
 # «Мозги» и «Магия утра» живут в отдельном роутере (habits_api.py).
@@ -427,7 +445,11 @@ def root() -> Dict[str, Any]:
             "/api/status", "/api/record", "/api/record/stop",
             "/api/play", "/api/stop", "/api/macro",
             "/api/chat", "/api/habits", "/api/habits/{id}/log",
+<<<<<<< HEAD
             "/api/morning/motivation", "/ws",
+=======
+            "/api/morning/motivation",
+>>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
         ],
         "docs": "/docs",
     }
@@ -435,6 +457,7 @@ def root() -> Dict[str, Any]:
 
 @app.get("/api/status")
 def api_status() -> Dict[str, Any]:
+<<<<<<< HEAD
     st = engine.status()
     st["ws_clients"] = hub.count()
     return st
@@ -463,6 +486,9 @@ async def ws_link(ws: WebSocket) -> None:
         pass
     finally:
         hub.remove(ws)
+=======
+    return engine.status()
+>>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
 
 
 @app.get("/api/macro")

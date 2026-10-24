@@ -43,8 +43,11 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+<<<<<<< HEAD
 from storage_paths import writable_file
 
+=======
+>>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
 BASE_DIR = Path(__file__).resolve().parent
 
 PG_DDL = """
@@ -237,7 +240,11 @@ class PgHabitsRepo:
                 q += " WHERE NOT archived"
             q += " ORDER BY sort_order, created_at"
             with conn.cursor() as cur:
+<<<<<<< HEAD
                 cur.execute(q.encode("utf-8"))
+=======
+                cur.execute(q)
+>>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
                 rows = cur.fetchall()
             return [
                 {
@@ -260,8 +267,12 @@ class PgHabitsRepo:
             self._ensure(conn)
             with conn.cursor() as cur:
                 cur.execute("SELECT COALESCE(MAX(sort_order), -1) + 1 FROM habits")
+<<<<<<< HEAD
                 row = cur.fetchone()
                 order = int(row[0]) if row else 0
+=======
+                order = cur.fetchone()[0]
+>>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
                 cur.execute(
                     "INSERT INTO habits (id, title, icon, sort_order) VALUES (%s, %s, %s, %s)",
                     (hid, title, icon or "⭐", order),
@@ -351,8 +362,14 @@ def get_repo():
             if dsn:
                 _repo = PgHabitsRepo(dsn)
             else:
+<<<<<<< HEAD
                 path = writable_file(
                     "KOLOBOK_HABITS_FILE", BASE_DIR / "data" / "habits.json"
+=======
+                path = Path(
+                    os.environ.get("KOLOBOK_HABITS_FILE")
+                    or (BASE_DIR / "data" / "habits.json")
+>>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
                 )
                 _repo = JsonHabitsRepo(path)
         return _repo

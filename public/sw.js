@@ -1,5 +1,9 @@
 const CACHE = "kolobok-v2";
+<<<<<<< HEAD
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
+=======
+const CORE = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg"];
+>>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
 
 function cachePut(cacheName, req, res) {
 	// Кэшируем только успешные same-origin ответы: ошибки (403/404/заглушки)
@@ -50,7 +54,11 @@ self.addEventListener("fetch", (e) => {
 					return res;
 				})
 				.catch(() =>
+<<<<<<< HEAD
 					caches.match(req).then((hit) => hit || caches.match("./index.html")),
+=======
+					caches.match(req).then((hit) => hit || caches.match("/index.html")),
+>>>>>>> 1ad8d64 (feat: Колобок v2 — умные мозги как Алиса + Ollama + aider)
 				),
 		);
 		return;

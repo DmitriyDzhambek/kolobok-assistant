@@ -6,6 +6,7 @@ import { MacroPanel } from "./components/MacroPanel";
 import { RecipePanel } from "./components/RecipePanel";
 import { MorningMagic } from "./components/MorningMagic";
 import { ChatPanel } from "./components/ChatPanel";
+import { PartnersPanel } from "./components/PartnersPanel";
 import {
 	QuickActions,
 	recipeOfTheDay,
@@ -147,12 +148,12 @@ export default function App() {
 	const [input, setInput] = useState("");
 	const [installEvt, setInstallEvt] = useState<any>(null);
 	const [chatAuto, setChatAuto] = useState<string | null>(null);
-	const [tab, setTab] = useState<"main" | "morning" | "chat">(() => {
+	const [tab, setTab] = useState<"main" | "morning" | "chat" | "partners">(() => {
 		try {
 			const p =
 				typeof window !== "undefined" &&
 				new URLSearchParams(window.location.search).get("tab");
-			return p === "morning" || p === "chat" ? p : "main";
+			return p === "morning" || p === "chat" || p === "partners" ? p : "main";
 		} catch {
 			return "main";
 		}
@@ -164,7 +165,6 @@ export default function App() {
 
 	// Общий «живой канал» с бэкендом стартует сразу (WebSocket + авто-реконнект).
 	useConnection();
-
 	const macro = useMacro();
 	const macroRef = useRef(macro);
 	macroRef.current = macro;
@@ -399,7 +399,6 @@ export default function App() {
 			onClick: () => void processText("погода"),
 		},
 	];
-
 	return (
 		<div className="app">
 			<Background />
@@ -421,7 +420,8 @@ export default function App() {
 						["main", "🌙 Колобок"],
 						["morning", "✨ Магия утра"],
 						["chat", "💬 Чат"],
-					] as ["main" | "morning" | "chat", string][]
+						["partners", "💰 Заработок"],
+					] as ["main" | "morning" | "chat" | "partners", string][]
 				).map(([id, label]) => (
 					<motion.button
 						key={id}
@@ -505,7 +505,6 @@ export default function App() {
 						</div>
 
 						<QuickActions actions={quickActions} />
-
 						{showMacro && (
 							<MacroPanel
 								status={macro.status}
@@ -576,6 +575,19 @@ export default function App() {
 							autoAsk={chatAuto}
 							onAutoAsked={() => setChatAuto(null)}
 						/>
+					</motion.div>
+				)}
+
+				{tab === "partners" && (
+					<motion.div
+						key="partners"
+						className="tabpage"
+						initial={{ opacity: 0, y: 10 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: -10 }}
+						transition={{ duration: 0.18 }}
+					>
+						<PartnersPanel />
 					</motion.div>
 				)}
 			</AnimatePresence>

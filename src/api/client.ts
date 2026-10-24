@@ -87,7 +87,6 @@ export function friendlyApiError(e: unknown): string {
 		return BACKEND_HINT;
 	return e instanceof Error ? e.message : String(e);
 }
-
 export function isNetworkError(e: unknown): boolean {
 	return e instanceof TypeError || (e as any)?.name === "AbortError";
 }

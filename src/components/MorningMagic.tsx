@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AddHabit } from "./AddHabit";
 import { useHabits } from "../habits/useHabits";
@@ -38,7 +38,6 @@ export function MorningMagic() {
 		if (!currentlyDone) setFlash({ id, key: Date.now() });
 		void h.mark(id, currentlyDone ? "clear" : "done");
 	};
-
 	return (
 		<div className="morning">
 			<div className="morning-head glass">
