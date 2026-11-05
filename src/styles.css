@@ -5940,3 +5940,172 @@ html, body, #root { overflow-x: hidden; max-width: 100vw; }
 		min-height: 44px;
 	}
 }
+
+/* ---------- live, location-aware dashboard ---------- */
+.dashboard-overlay {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	pointer-events: none;
+}
+
+.dashboard-position {
+	position: absolute;
+	pointer-events: auto;
+}
+
+.dashboard-weather-position {
+	top: 50%;
+	left: 10px;
+	transform: translateY(-50%);
+}
+
+.dashboard-focus-position {
+	top: 50%;
+	right: 10px;
+	transform: translateY(-50%);
+}
+
+.dashboard-streak-position {
+	bottom: 10px;
+	left: 50%;
+	transform: translateX(-50%);
+}
+
+.dashboard-card {
+	display: flex;
+	width: 128px;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	padding: 10px;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 16px;
+	background: rgba(255, 255, 255, 0.05);
+	color: #efe9ff;
+	text-align: center;
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.dashboard-weather-card {
+	min-height: 112px;
+	justify-content: center;
+	font: inherit;
+	cursor: pointer;
+}
+
+.dashboard-weather-card:disabled {
+	cursor: wait;
+	opacity: 0.8;
+}
+
+.dashboard-weather-card:hover:not(:disabled) {
+	border-color: rgba(255, 215, 102, 0.45);
+}
+
+.dashboard-card-icon {
+	display: flex;
+	width: 42px;
+	height: 42px;
+	flex: none;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 13px;
+	background: rgba(255, 255, 255, 0.06);
+}
+
+.dashboard-weather-icon,
+.dashboard-stat-icon {
+	width: 24px;
+	height: 24px;
+}
+
+.dashboard-weather-icon {
+	color: #ffd766;
+}
+
+.dashboard-focus-icon {
+	color: #67e8f9;
+}
+
+.dashboard-streak-icon {
+	color: #fb923c;
+}
+
+.dashboard-card-copy {
+	min-width: 0;
+	max-width: 100%;
+}
+
+.dashboard-card-label {
+	overflow-wrap: anywhere;
+	color: rgba(255, 255, 255, 0.65);
+	font-size: 12px;
+	line-height: 1.25;
+}
+
+.dashboard-card-value {
+	margin-top: 3px;
+	overflow-wrap: anywhere;
+	color: rgba(255, 255, 255, 0.94);
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.25;
+}
+
+@media (max-width: 620px) {
+	.dashboard-overlay {
+		position: relative;
+		inset: auto;
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 6px;
+		flex: none;
+		padding: 2px 4px 8px;
+	}
+
+	.dashboard-position,
+	.dashboard-weather-position,
+	.dashboard-focus-position,
+	.dashboard-streak-position {
+		position: static;
+		min-width: 0;
+		transform: none;
+	}
+
+	.dashboard-card {
+		width: 100%;
+		min-height: 96px;
+		height: 100%;
+		gap: 6px;
+		padding: 8px 5px;
+		border-radius: 13px;
+	}
+
+	.dashboard-card-icon {
+		width: 32px;
+		height: 32px;
+		border-radius: 10px;
+	}
+
+	.dashboard-weather-icon,
+	.dashboard-stat-icon {
+		width: 19px;
+		height: 19px;
+	}
+
+	.dashboard-card-label {
+		font-size: 10px;
+	}
+
+	.dashboard-card-value {
+		font-size: 11px;
+	}
+
+	.home-content {
+		padding-top: 4px;
+	}
+}
