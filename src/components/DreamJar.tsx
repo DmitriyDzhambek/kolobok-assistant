@@ -9,6 +9,7 @@ import {
   type DreamGoal,
   type DreamState,
 } from "../dreams/storage";
+import { useCryptoRates, type CryptoRates } from "../hooks/useCryptoRates";
 
 type GoalForm = {
   title: string;
@@ -17,14 +18,19 @@ type GoalForm = {
 };
 
 const EMPTY_FORM: GoalForm = { title: "", currency: "USDT", targetAmount: "" };
-const DEMO_RATES: Record<CryptoCurrency, number> = {
-  USDT: 90,
-  TON: 500,
-  Gram: 5,
-};
+const GRAM_DEMO_RATE_RUB = 5;
 
-export function convertToRub(amount: number, currency: string): number {
-  const rate = DEMO_RATES[currency as CryptoCurrency];
+function convertToRub(
+  amount: number,
+  currency: CryptoCurrency,
+  rates: CryptoRates,
+): number {
+  const rate =
+    currency === "USDT"
+      ? rates.usdtToRub
+      : currency === "TON"
+        ? rates.tonToRub
+        : GRAM_DEMO_RATE_RUB;
   return Number.isFinite(amount) && rate ? amount * rate : 0;
 }
 
@@ -45,6 +51,7 @@ type DreamJarProps = {
 };
 
 export function DreamJar({ revision = 0 }: DreamJarProps) {
+  const rates = useCryptoRates();
   const [dreamState, setDreamState] = useState<DreamState>(EMPTY_DREAM_STATE);
   const [form, setForm] = useState<GoalForm>(EMPTY_FORM);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
@@ -61,7 +68,7 @@ export function DreamJar({ revision = 0 }: DreamJarProps) {
   }, [revision]);
 
   const amount = Number(form.targetAmount);
-  const estimatedRub = convertToRub(amount, form.currency);
+  const estimatedRub = convertToRub(amount, form.currency, rates);
 
   const persist = (nextState: DreamState) => {
     try {
@@ -206,21 +213,36 @@ export function DreamJar({ revision = 0 }: DreamJarProps) {
           </label>
         </div>
         <AnimatePresence mode="wait">
-          {amount > 0 && Number.isFinite(amount) && (
+          {amount > 0 && Number.isFinite(amount) && rates.isLoading ? (
             <motion.div
-              key={`${form.currency}-${estimatedRub}`}
+              key="loading"
+              className="dream-conversion dream-conversion-loading"
+              role="status"
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+            >
+              Считаю курс…
+            </motion.div>
+          ) : amount > 0 && Number.isFinite(amount) ? (
+            <motion.div
+              key={`${form.currency}-${estimatedRub}-${rates.lastUpdated}`}
               className="dream-conversion"
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
             >
-              ~ {formatRub(estimatedRub)} ₽ по курсу
+              ~ {formatRub(estimatedRub)} ₽ по курсу на сегодня
             </motion.div>
-          )}
+          ) : null}
         </AnimatePresence>
-        <p className="dream-rate-note">
-          Демо-курсы: 1 USDT = 90 ₽, 1 TON = 500 ₽, 1 Gram = 5 ₽. Это пример,
-          не актуальный рыночный курс.
+        <p
+          className={`dream-rate-note${rates.isFallback ? " is-fallback" : ""}`}
+          role={rates.error ? "status" : undefined}
+        >
+          {rates.isFallback
+            ? `Резервный курс${rates.error ? ": данные CoinGecko временно недоступны." : " до получения актуальных данных."} TON — 500 ₽, USDT — 90 ₽. Gram — демо-оценка 5 ₽.`
+            : `Источник: CoinGecko · обновление каждые 5 минут. Gram — демо-оценка 5 ₽.`}
         </p>
         {error && <p className="dream-error" role="alert">{error}</p>}
         <div className="dream-form-actions">

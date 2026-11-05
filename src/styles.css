@@ -1438,12 +1438,29 @@ body {
 	box-shadow: 0 0 24px rgba(255, 215, 102, 0.08);
 }
 
+.dream-conversion-loading {
+	animation: dream-rate-pulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes dream-rate-pulse {
+	from {
+		opacity: 0.55;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
 .dream-rate-note,
 .dream-progress-note {
 	margin: 8px 0 0;
 	color: rgba(239, 233, 255, 0.48);
 	font-size: 11px;
 	line-height: 1.45;
+}
+
+.dream-rate-note.is-fallback {
+	color: rgba(255, 215, 102, 0.72);
 }
 
 .dream-error {
