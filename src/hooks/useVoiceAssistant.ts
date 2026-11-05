@@ -28,6 +28,41 @@ export interface VoiceConfig {
   interimResults?: boolean;
 }
 
+type SpeechRecognitionEventLike = {
+  resultIndex: number;
+  results: ArrayLike<{
+    isFinal: boolean;
+    0: { transcript: string };
+  }>;
+};
+
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  results: ArrayLike<{
+    isFinal: boolean;
+    0: { transcript: string };
+  }>;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+type WindowWithSpeechRecognition = Window & {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+};
+
+function getSpeechRecognitionConstructor(): SpeechRecognitionConstructor | undefined {
+  const speechWindow = window as WindowWithSpeechRecognition;
+  return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
+}
+
 /**
  * Кастомный хук для работы с голосовым ассистентом
  * Использует Web Speech API (STT/TTS)
@@ -38,12 +73,12 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
   const [error, setError] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState<boolean>(true);
 
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const synthesisRef = useRef<typeof window.speechSynthesis>(null);
 
   // Проверяем поддержку API
   useEffect(() => {
-    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognitionAPI = getSpeechRecognitionConstructor();
     setIsSupported(!!SpeechRecognitionAPI && !!window.speechSynthesis);
   }, []);
 
@@ -68,7 +103,13 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
 
     stopRecognition();
 
-    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognitionAPI = getSpeechRecognitionConstructor();
+    if (!SpeechRecognitionAPI) {
+      setIsSupported(false);
+      setError("Голосовой ввод не поддерживается в этом браузере");
+      setStatus("error");
+      return;
+    }
     const recognition = new SpeechRecognitionAPI();
 
     recognition.lang = config.lang || "ru-RU";
@@ -79,13 +120,13 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     recognition.onend = () => {
       if (status !== "error") setStatus("idle");
     };
-    recognition.onerror = (event: any) => {
+    recognition.onerror = (event) => {
       setError(event.error || "Ошибка распознавания");
       setStatus("error");
       stopRecognition();
     };
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event) => {
       let finalTranscript = "";
       let interimTranscript = "";
 

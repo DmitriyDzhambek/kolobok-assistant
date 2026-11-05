@@ -13,6 +13,7 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
+    "@cline/sdk": "^0.2.0",
     "framer-motion": "^14.6.0",
     "lucide-react": "^1.61.0",
     "react": "^18.3.1",

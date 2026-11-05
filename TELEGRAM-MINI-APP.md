@@ -125,6 +125,28 @@ ngrok http 8765
 4. В **Environment Variables** добавь `VITE_MACRO_API_URL` = адрес твоего туннеля.
 5. Deploy → получишь `https://kolobok-assistant.vercel.app` — её и даёшь BotFather.
 
+#### Telegram-уведомления
+
+Для отправки сообщений серверной функцией создай бота через @BotFather (`/newbot`),
+открой с ним личный чат и нажми **Start**. Токен храни только в Vercel:
+
+- `TELEGRAM_BOT_TOKEN` — токен, выданный @BotFather;
+- `TELEGRAM_CHAT_ID` — ID личного чата-получателя (для личного чата обычно совпадает с Telegram user ID);
+- `TELEGRAM_ALLOWED_USER_ID` — Telegram user ID, которому разрешено вызывать отправку.
+
+Узнать user ID можно через @userinfobot. Добавь переменные в
+**Vercel → Project → Settings → Environment Variables** и сделай redeploy.
+`POST /api/notify` принимает `{ "text": "..." }`, проверяет подпись и свежесть
+`X-TG-Init-Data`, разрешает только `TELEGRAM_ALLOWED_USER_ID` и отправляет
+сообщение на заданный `TELEGRAM_CHAT_ID`. Не добавляй токен в `VITE_*` переменные
+или код фронтенда.
+
+Этот endpoint отправляет сообщение сразу. Таймер в закрытом PWA не может сам
+вызвать его позже: для гарантированной отложенной отправки потребуется очередь
+(например, QStash) или периодический worker с постоянным хранилищем запланированных
+сообщений. Обычный `setTimeout` в браузере прекращается при закрытии приложения,
+а Vercel Function не остаётся работать после ответа.
+
 ### Вариант B: GitHub Pages (бесплатно, без сторонних сервисов)
 
 1. В `vite.config.ts` при сборке для Pages нужен `base: "/kolobok-assistant/"`.

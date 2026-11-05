@@ -1,5 +1,12 @@
-const CACHE = "kolobok-v3";
-const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
+const CACHE = "kolobok-v4";
+const CORE = [
+	"./",
+	"./index.html",
+	"./manifest.json",
+	"./icon.svg",
+	"./icon-192.png",
+	"./icon-512.png",
+];
 
 function cachePut(cacheName, req, res) {
 	if (!res || !res.ok || res.type !== "basic") return;

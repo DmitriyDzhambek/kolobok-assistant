@@ -22,7 +22,7 @@ export function useSWUpdate() {
 		navigator.serviceWorker
 			// Относительный путь + scope — SW работает и в корне, и в подпапке
 			// (Vercel-домен, localhost, Telegram Mini App — все варианты).
-			.register("sw.js", { scope: "./" })
+			.register("service-worker.js", { scope: "./" })
 			.then((reg) => {
 				if (reg.waiting) {
 					setUpdateAvailable(true);
@@ -63,7 +63,7 @@ export function useSWUpdate() {
 		}
 	};
 
-	// Периодическая проверка обновлений: Chrome сам проверяет sw.js только
+	// Периодическая проверка обновлений: браузер проверяет service-worker.js только
 	// при навигации и раз в сутки. Для постоянно открытого PWA на рабочем
 	// столе спрашиваем обновление сами — каждые 60 секунд.
 	useEffect(() => {

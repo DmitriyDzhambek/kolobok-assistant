@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { sendTelegramNotification, tgInitData } from "../api/client";
 
 export type Notification = {
 	id: string;
@@ -55,27 +56,21 @@ export function clearNotifications() {
 	localStorage.removeItem(KEY);
 }
 
-/** Отправить push-уведомление через Telegram WebApp API.
- * Если вне Telegram — браузерное Notification API. */
+/** Отправить уведомление в Telegram или через браузерное Notification API. */
 export function sendPush(message: string): void {
-	// 1. Telegram WebApp API
-	try {
-		const tg = (window as any)?.Telegram?.WebApp;
-		if (tg?.sendNotification) {
-			tg.sendNotification(message);
-			return;
-		}
-	} catch {
-		/* fall through */
+	if (tgInitData()) {
+		void sendTelegramNotification(message).catch((error: unknown) => {
+			console.error("Не удалось отправить уведомление в Telegram:", error);
+		});
+		return;
 	}
 
-	// 2. Браузерное Notification API
+	// Browser notifications work only while the browser can run the page/service worker.
 	if ("Notification" in window && Notification.permission === "granted") {
 		new Notification("🫓 Колобок", { body: message });
 		return;
 	}
 
-	// 3. Запросить разрешение
 	if ("Notification" in window && Notification.permission !== "denied") {
 		Notification.requestPermission().then((perm) => {
 			if (perm === "granted") {
@@ -85,8 +80,6 @@ export function sendPush(message: string): void {
 		return;
 	}
 
-	// 4. Fallback — Alert (только для отладки)
-	// alert(message);
 }
 
 /** Спросить разрешение на уведомления. */

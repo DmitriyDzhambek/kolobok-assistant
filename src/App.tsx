@@ -1,27 +1,49 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Home, Sparkles } from "lucide-react";
+import { Home, Sparkles, Users, WandSparkles } from "lucide-react";
 import { Kolobok } from "./components/Kolobok";
 import { Background } from "./components/Background";
 import { FirefliesCanvas } from "./components/FirefliesCanvas";
 import { Dashboard } from "./components/Dashboard";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { MagicIncome } from "./components/MagicIncome";
+import { PartnerTab } from "./components/PartnerTab";
 import { useVoiceAssistant } from "./hooks/useVoiceAssistant";
+import { initTma, tgWebApp } from "./tma";
+import type { TimeOfDay } from "./utils/timeContext";
 import "./styles.css";
 
 /**
  * Тип вкладки
  */
-type TabType = "main" | "magic";
+type TabType = "main" | "magic" | "partner";
 
 /**
  * Приложение Kolobok с голосовым ассистентом и навигацией
  */
 export default function App() {
-  const [timeOfDay, setTimeOfDay] = useState("night");
+  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>("night");
   const [activeTab, setActiveTab] = useState<TabType>("main");
   const [botText, setBotText] = useState("Привет! Я Колобок. Ты отдыхай, а я для тебя заработаю!");
   const [isListening, setIsListening] = useState(false);
+  const [isTelegramMiniApp, setIsTelegramMiniApp] = useState(false);
+
+  useEffect(() => {
+    initTma();
+    const detectTelegram = () => {
+      if (tgWebApp()) {
+        setIsTelegramMiniApp(true);
+        clearInterval(interval);
+      }
+    };
+    const interval = window.setInterval(detectTelegram, 250);
+    detectTelegram();
+    const timeout = window.setTimeout(() => clearInterval(interval), 3000);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, []);
 
   // Голосовой ассистент
   const {
@@ -134,7 +156,7 @@ export default function App() {
   };
 
   return (
-    <div className={`app tod-${timeOfDay}`}>
+    <div className={`app tod-${timeOfDay}`} data-platform={isTelegramMiniApp ? "telegram" : "web"}>
       <Background />
       <FirefliesCanvas />
 
@@ -145,115 +167,110 @@ export default function App() {
         </div>
       </header>
 
-      <AnimatePresence mode="wait">
-        {activeTab === "main" && (
-          <motion.main
-            key="main"
-            className="stage relative"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-          >
-            {/* Интерактивный дашборд */}
-            <Dashboard />
+      <ErrorBoundary onGoHome={() => setActiveTab("main")}>
+        <AnimatePresence mode="popLayout">
+          {activeTab === "main" && (
+            <motion.main
+              key="main"
+              className="stage relative app-screen"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              {/* Интерактивный дашборд */}
+              <Dashboard />
 
-            {/* Колобок по центру */}
-            <div className="relative z-10 flex flex-col items-center">
-              <Kolobok state={isListening ? "listen" : "idle"} timeOfDay={timeOfDay} />
-              
-              {/* Облачко с текстом */}
-              <motion.div
-                className="bubble mt-4 min-w-[280px]"
-                key={botText}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3 }}
-              >
-                <div className="bubble-text whitespace-pre-wrap">
-                  {error ? error : botText}
-                </div>
-                {interimText && (
-                  <div className="bubble-text text-white/60 italic mt-1">
-                    {interimText}...
-                  </div>
-                )}
-              </motion.div>
+              {/* Колобок по центру */}
+              <div className="home-content">
+                <Kolobok state={isListening ? "listen" : "idle"} timeOfDay={timeOfDay} />
 
-              {/* Кнопка микрофона */}
-              <motion.div
-                className="mt-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-              >
-                <motion.button
-                  className="relative flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-purple-600/20 to-indigo-600/20 border-2 border-purple-500/30 backdrop-blur-md cursor-pointer transition-all"
-                  onClick={handleMicClick}
-                  variants={micAnimation}
-                  animate={isListening ? "listening" : "idle"}
-                  transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  disabled={!isSupported}
+                {/* Облачко с текстом */}
+                <motion.div
+                  className="bubble mt-4 min-w-[280px]"
+                  key={botText}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3 }}
                 >
-                  {isListening ? (
-                    <>
-                      <motion.div
-                        className="absolute inset-0 rounded-full border-2 border-purple-400"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                      />
-                      <MicOff className="w-8 h-8 text-purple-300" />
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="w-8 h-8 text-purple-300" />
-                      {!isSupported && (
-                        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs text-red-400 whitespace-nowrap">
-                          Не поддерживается
-                        </div>
-                      )}
-                    </>
+                  <div className="bubble-text whitespace-pre-wrap">
+                    {error ? error : botText}
+                  </div>
+                  {interimText && (
+                    <div className="bubble-text text-white/60 italic mt-1">
+                      {interimText}...
+                    </div>
                   )}
-                </motion.button>
-              </motion.div>
-            </div>
-          </motion.main>
-        )}
+                </motion.div>
 
-        {activeTab === "magic" && (
-          <motion.div
-            key="magic"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-            className="min-h-screen"
-          >
-            <MagicIncome />
-          </motion.div>
-        )}
-      </AnimatePresence>
+                {/* Волшебная кнопка-палочка */}
+                <motion.div
+                  className="mt-6 relative"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                >
+                  <motion.button
+                    className="home-mic-button"
+                    onClick={handleMicClick}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    disabled={!isSupported}
+                  >
+                    <WandSparkles className="w-8 h-8 text-white" />
+                    {!isSupported && (
+                      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs text-red-400 whitespace-nowrap">
+                        Не поддерживается
+                      </div>
+                    )}
+                  </motion.button>
+                </motion.div>
+              </div>
+            </motion.main>
+          )}
+
+          {activeTab === "magic" && (
+            <motion.main
+              key="magic"
+              className="stage relative app-screen"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <MagicIncome />
+            </motion.main>
+          )}
+
+          {activeTab === "partner" && (
+            <motion.main
+              key="partner"
+              className="stage relative app-screen"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <PartnerTab />
+            </motion.main>
+          )}
+        </AnimatePresence>
+      </ErrorBoundary>
 
       {/* Bottom Navigation */}
       <motion.nav
-        className="fixed bottom-0 left-1/2 -translate-x-1/2 mb-6 z-50"
+        className="bottom-nav"
+        aria-label="Основная навигация"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.5 }}
       >
-        <motion.div
-          className="flex items-center gap-4 px-4 py-3 rounded-2xl bg-white/5 backdrop-blur-lg border border-white/10 shadow-xl"
-          whileHover={{ scale: 1.02 }}
-        >
+        <div className="bottom-nav-inner">
           <motion.button
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              activeTab === "main"
-                ? "bg-purple-600/20 text-purple-300"
-                : "text-white/60 hover:bg-white/10"
-            }`}
+            className={`bottom-nav-button${activeTab === "main" ? " is-active" : ""}`}
             onClick={() => handleTabChange("main")}
+            type="button"
+            aria-current={activeTab === "main" ? "page" : undefined}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
@@ -262,19 +279,29 @@ export default function App() {
           </motion.button>
           
           <motion.button
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              activeTab === "magic"
-                ? "bg-purple-600/20 text-purple-300"
-                : "text-white/60 hover:bg-white/10"
-            }`}
+            className={`bottom-nav-button${activeTab === "magic" ? " is-active" : ""}`}
             onClick={() => handleTabChange("magic")}
+            type="button"
+            aria-current={activeTab === "magic" ? "page" : undefined}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
             <Sparkles className="w-5 h-5" />
             <span>Магия</span>
           </motion.button>
-        </motion.div>
+
+          <motion.button
+            className={`bottom-nav-button${activeTab === "partner" ? " is-active" : ""}`}
+            onClick={() => handleTabChange("partner")}
+            type="button"
+            aria-current={activeTab === "partner" ? "page" : undefined}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Users className="w-5 h-5" />
+            <span>Партнёр</span>
+          </motion.button>
+        </div>
       </motion.nav>
 
       {/* Подсказка для микрофона (если ошибка) */}

@@ -35,11 +35,21 @@ export function apiBase(): string {
 
 export function tgInitData(): string | null {
 	try {
-		const d = (window as any)?.Telegram?.WebApp?.initData;
+		const d = window.Telegram?.WebApp?.initData;
 		return typeof d === "string" && d ? d : null;
 	} catch {
 		return null;
 	}
+}
+
+export async function sendTelegramNotification(text: string): Promise<void> {
+	if (!tgInitData()) {
+		throw new Error("Telegram notifications are only available inside Telegram");
+	}
+	await apiFetch("/api/notify", {
+		method: "POST",
+		body: JSON.stringify({ text }),
+	});
 }
 
 export async function apiFetch(

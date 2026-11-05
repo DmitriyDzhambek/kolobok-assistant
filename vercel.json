@@ -10,12 +10,16 @@
 			}
 		},
 		{
+			"src": "api/notify.ts",
+			"use": "@vercel/node"
+		},
+		{
 			"src": "api/index.py",
 			"use": "@vercel/python"
 		}
 	],
 	"rewrites": [
-		{ "source": "/api/(.*)", "destination": "/api/index.py" },
+		{ "source": "/api/(?!notify$)(.*)", "destination": "/api/index.py" },
 		{ "source": "/ws", "destination": "/api/index.py" },
 		{ "source": "/(.*)", "destination": "/index.html" }
 	]
