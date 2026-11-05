@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, Mic, MicOff, Sparkles, Users } from "lucide-react";
+import { Clock, Home, Mic, MicOff, Sparkles, Users } from "lucide-react";
 import { Kolobok } from "./components/Kolobok";
 import { Background } from "./components/Background";
 import { FirefliesCanvas } from "./components/FirefliesCanvas";
@@ -9,6 +9,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { MagicIncome } from "./components/MagicIncome";
 import { PartnerTab } from "./components/PartnerTab";
 import { useVoiceAssistant } from "./hooks/useVoiceAssistant";
+import type { ActiveVoiceTimer } from "./hooks/useVoiceAssistant";
 import { initTma, tgWebApp } from "./tma";
 import type { TimeOfDay } from "./utils/timeContext";
 import "./styles.css";
@@ -27,6 +28,8 @@ export default function App() {
   const [botText, setBotText] = useState("Привет! Я Колобок. Ты отдыхай, а я для тебя заработаю!");
   const [commandDraft, setCommandDraft] = useState("");
   const [isTelegramMiniApp, setIsTelegramMiniApp] = useState(false);
+  const [activeTimer, setActiveTimer] = useState<ActiveVoiceTimer | null>(null);
+  const [timerNow, setTimerNow] = useState(() => Date.now());
   const fallbackInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -59,6 +62,7 @@ export default function App() {
     setWakeWordMode,
     runCommand,
     setOnCommandResult,
+    setOnTimerChange,
     clearError,
   } = useVoiceAssistant({ lang: "ru-RU" });
   const handleCommandResult = useCallback((result: { text: string }) => {
@@ -68,6 +72,20 @@ export default function App() {
   useEffect(() => {
     setOnCommandResult(handleCommandResult);
   }, [handleCommandResult, setOnCommandResult]);
+
+  const handleTimerChange = useCallback((timer: ActiveVoiceTimer | null) => {
+    setActiveTimer(timer);
+  }, []);
+
+  useEffect(() => {
+    setOnTimerChange(handleTimerChange);
+  }, [handleTimerChange, setOnTimerChange]);
+
+  useEffect(() => {
+    if (!activeTimer) return;
+    const interval = window.setInterval(() => setTimerNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, [activeTimer]);
 
   // Обновляем время суток
   useEffect(() => {
@@ -118,6 +136,13 @@ export default function App() {
     }
   };
   const visibleError = permissionIssue ? null : error;
+  const timerSeconds = activeTimer
+    ? Math.max(0, Math.ceil((activeTimer.endsAt - timerNow) / 1000))
+    : 0;
+  const timerProgress = activeTimer
+    ? Math.max(0, Math.min(1, (activeTimer.endsAt - timerNow) / activeTimer.durationMs))
+    : 0;
+  const timerLabel = `${String(Math.floor(timerSeconds / 60)).padStart(2, "0")}:${String(timerSeconds % 60).padStart(2, "0")}`;
 
   return (
     <div className={`app tod-${timeOfDay}`} data-platform={isTelegramMiniApp ? "telegram" : "web"}>
@@ -172,8 +197,38 @@ export default function App() {
                 </motion.div>
 
                 {/* Волшебная кнопка-палочка */}
+                <AnimatePresence>
+                  {activeTimer && (
+                    <motion.div
+                      className="active-timer"
+                      role="timer"
+                      aria-label={`До окончания таймера ${timerLabel}`}
+                      aria-live="off"
+                      initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <svg className="active-timer-ring" viewBox="0 0 80 80" aria-hidden="true">
+                        <circle className="active-timer-track" cx="40" cy="40" r="35" />
+                        <circle
+                          className="active-timer-progress"
+                          cx="40"
+                          cy="40"
+                          r="35"
+                          style={{
+                            strokeDasharray: 2 * Math.PI * 35,
+                            strokeDashoffset: 2 * Math.PI * 35 * (1 - timerProgress),
+                          }}
+                        />
+                      </svg>
+                      <Clock className="active-timer-icon" aria-hidden="true" />
+                      <span className="active-timer-label">{timerLabel}</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 <motion.div
-                  className="mt-6 relative"
+                  className={`mt-6 relative home-mic-wrap${activeTimer ? " has-active-timer" : ""}`}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.3 }}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { localHabitsView } from "../habits/localStore";
 
 export type VoiceStatus =
   | "idle"
@@ -6,7 +7,21 @@ export type VoiceStatus =
   | "processing"
   | "speaking"
   | "error";
-export type VoiceAction = "greeting" | "weather" | "focus" | "timer" | "unknown";
+export type VoiceAction =
+  | "greeting"
+  | "weather"
+  | "focus"
+  | "timer"
+  | "time"
+  | "math"
+  | "joke"
+  | "unknown";
+
+export interface ActiveVoiceTimer {
+  startedAt: number;
+  endsAt: number;
+  durationMs: number;
+}
 
 export interface VoiceResult {
   text: string;
@@ -62,7 +77,7 @@ function getWakeWordCommand(text: string): string | null {
 
 function parseDuration(text: string): number | null {
   const match = text.toLocaleLowerCase("ru-RU").match(
-    /(\d{1,3})\s*(секунд[уы]?|сек|минут[уы]?|мин|час(?:а|ов)?)(?![а-яё])/,
+    /(\d{1,3})\s*(секунд(?:а|у|ы)?|сек|минут(?:а|у|ы)?|мин|час(?:а|ов|ы)?)(?![а-яё])/,
   );
   if (!match) return null;
   const value = Number(match[1]);
@@ -74,6 +89,105 @@ function parseDuration(text: string): number | null {
       ? 60 * 60 * 1000
       : 60 * 1000;
   return value * multiplier;
+}
+
+function formatDuration(durationMs: number): string {
+  if (durationMs < 60_000) {
+    const seconds = Math.max(1, Math.round(durationMs / 1000));
+    const lastTwoDigits = seconds % 100;
+    const lastDigit = seconds % 10;
+    const unit =
+      lastTwoDigits >= 11 && lastTwoDigits <= 14
+        ? "секунд"
+        : lastDigit === 1
+          ? "секунду"
+          : lastDigit >= 2 && lastDigit <= 4
+            ? "секунды"
+            : "секунд";
+    return `${seconds} ${unit}`;
+  }
+
+  const minutes = Math.max(1, Math.round(durationMs / 60_000));
+  const lastTwoDigits = minutes % 100;
+  const lastDigit = minutes % 10;
+  const unit =
+    lastTwoDigits >= 11 && lastTwoDigits <= 14
+      ? "минут"
+      : lastDigit === 1
+        ? "минуту"
+        : lastDigit >= 2 && lastDigit <= 4
+          ? "минуты"
+          : "минут";
+  return `${minutes} ${unit}`;
+}
+
+function parseTimerDuration(text: string): number | null {
+  const explicitDuration = parseDuration(text);
+  if (explicitDuration !== null) return explicitDuration;
+
+  if (!/таймер|напомни\s+через|минут/i.test(text)) return null;
+  const match = text.match(/\d+/);
+  if (!match) return null;
+  const minutes = Number(match[0]);
+  return Number.isSafeInteger(minutes) && minutes > 0
+    ? minutes * 60_000
+    : null;
+}
+
+function calculateArithmetic(text: string): number | null {
+  const expression = text.match(
+    /(?<![\d.,])(?:\d+(?:[.,]\d+)?|[()+*/-])+(?:\s*(?:\d+(?:[.,]\d+)?|[()+*/-])+)*(?![\d.,])/g,
+  )?.find((candidate) => /[+*/-]/.test(candidate) && /\d/.test(candidate));
+  if (!expression) return null;
+
+  const tokens = expression.match(/\d+(?:[.,]\d+)?|[()+*/-]/g);
+  if (!tokens || tokens.join("") !== expression.replace(/\s+/g, "")) return null;
+
+  let index = 0;
+  const parseFactor = (): number => {
+    const token = tokens[index];
+    if (token === "+" || token === "-") {
+      index += 1;
+      const value = parseFactor();
+      return token === "-" ? -value : value;
+    }
+    if (token === "(") {
+      index += 1;
+      const value = parseExpression();
+      if (tokens[index] !== ")") throw new Error("Unbalanced parentheses");
+      index += 1;
+      return value;
+    }
+    if (!token || !/^\d/.test(token)) throw new Error("Expected a number");
+    index += 1;
+    return Number(token.replace(",", "."));
+  };
+  const parseTerm = (): number => {
+    let value = parseFactor();
+    while (tokens[index] === "*" || tokens[index] === "/") {
+      const operator = tokens[index++];
+      const operand = parseFactor();
+      if (operator === "/" && operand === 0) throw new Error("Division by zero");
+      value = operator === "*" ? value * operand : value / operand;
+    }
+    return value;
+  };
+  const parseExpression = (): number => {
+    let value = parseTerm();
+    while (tokens[index] === "+" || tokens[index] === "-") {
+      const operator = tokens[index++];
+      const operand = parseTerm();
+      value = operator === "+" ? value + operand : value - operand;
+    }
+    return value;
+  };
+
+  try {
+    const result = parseExpression();
+    return index === tokens.length && Number.isFinite(result) ? result : null;
+  } catch {
+    return null;
+  }
 }
 
 function playDing() {
@@ -120,6 +234,7 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
   const productivityReminderRef = useRef<number | null>(null);
   const workTimerRef = useRef<number | null>(null);
   const commandHandlerRef = useRef<(result: VoiceResult) => void>(() => {});
+  const timerHandlerRef = useRef<(timer: ActiveVoiceTimer | null) => void>(() => {});
   const restartWakeListeningRef = useRef<() => void>(() => {});
   const scheduleReminderRef = useRef<() => void>(() => {});
   const activeCommandRef = useRef(false);
@@ -175,27 +290,62 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
   }, [config.lang]);
 
   const processCommand = useCallback((text: string): VoiceResult => {
-    const normalized = text.toLocaleLowerCase("ru-RU");
-    const duration = parseDuration(normalized);
-    if (duration !== null) {
-      const timerDescription = duration >= 60_000
-        ? `${Math.round(duration / 60_000)} минут`
-        : `${Math.round(duration / 1000)} секунд`;
+    const normalized = text.toLocaleLowerCase("ru-RU").replace(/ё/g, "е");
+    if (/таймер|напомни\s+через|минут/i.test(normalized)) {
+      const duration = parseTimerDuration(normalized);
+      if (duration === null) {
+        return {
+          text: "На сколько минут поставить таймер?",
+          action: "unknown",
+        };
+      }
       return {
-        text: `Таймер на ${timerDescription}. Я напомню, когда время выйдет.`,
+        text: `Запускаю таймер на ${formatDuration(duration)}. Сфокусируйся на задаче, а я предупрежу, когда время выйдет!`,
         action: "timer",
       };
     }
-    if (/привет|здарова|как дела|как ты|что нового/i.test(normalized)) {
+    const arithmeticResult = calculateArithmetic(normalized);
+    if (arithmeticResult !== null) {
       return {
-        text: "У меня всё отлично! Кстати, в Money Bux появляются новые задания. Может, заработаем?",
-        action: "greeting",
+        text: `Ответ: ${arithmeticResult}. Твои математические способности растут!`,
+        action: "math",
       };
     }
-    if (/погода|на улице|дождь|снег|солнце|облачно/i.test(normalized)) {
+    if (/который час|сколько времени|время/i.test(normalized)) {
+      const currentTime = new Intl.DateTimeFormat("ru-RU", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date());
       return {
-        text: "Я услышал вопрос о погоде. Открой раздел погоды, чтобы посмотреть прогноз.",
+        text: `Сейчас ${currentTime}. Самое время стать лучше на 1%! Чем займемся?`,
+        action: "time",
+      };
+    }
+    if (/погода|на улице/i.test(normalized)) {
+      return {
+        text: "Погоду по геопозиции смотри в карточке «Погода». Если погода подходит, предлагаю выполнить привычку «Прогулка» или заглянуть в Магию дохода!",
         action: "weather",
+      };
+    }
+    if (/шутк|факт/i.test(normalized)) {
+      const answers = [
+        "Шутка: почему программист не любит природу? Там слишком много багов.",
+        "Шутка: программист поставил таймер на 5 минут, а отвлёкся на поиск ошибки. Таймер уже стал историей проекта.",
+        "Факт: короткая пауза после сосредоточенной работы помогает вернуться к задаче со свежим взглядом.",
+      ];
+      return {
+        text: answers[Math.floor(Math.random() * answers.length)],
+        action: "joke",
+      };
+    }
+    if (/привет|здравствуй|здарова|как дела|как ты|что нового/i.test(normalized)) {
+      const streakDays = localHabitsView().habits.reduce(
+        (longest, habit) => Math.max(longest, habit.streak),
+        0,
+      );
+      return {
+        text: `Привет! Я готов к работе. Твой стрик ${streakDays} ${streakDays === 1 ? "день" : "дней"}. Не хочешь его продлить?`,
+        action: "greeting",
       };
     }
     if (/фокус|концентрируйся|учись|учи|английский|хобби|привычк/i.test(normalized)) {
@@ -205,7 +355,7 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
       };
     }
     return {
-      text: "Я услышал тебя, но пока не понял команду. Попробуй сказать: «поставь таймер на 10 минут».",
+      text: "Я услышал тебя, но пока не понял команду. Попробуй сказать: «Поставь таймер на 10 минут» или «Какая погода».",
       action: "unknown",
     };
   }, []);
@@ -214,14 +364,23 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     const result = processCommand(text);
     commandHandlerRef.current(result);
     if (result.action === "timer") {
-      const duration = parseDuration(text);
+      const duration = parseTimerDuration(text);
       if (duration !== null) {
         clearTimer(workTimerRef);
+        const startedAt = Date.now();
+        timerHandlerRef.current({
+          startedAt,
+          endsAt: startedAt + duration,
+          durationMs: duration,
+        });
         workTimerRef.current = window.setTimeout(() => {
           workTimerRef.current = null;
+          timerHandlerRef.current(null);
           if (!disposedRef.current && document.visibilityState === "visible") {
             stopCurrentRecognition(true);
-            void speak("Время вышло! Ты молодец. Сделай небольшой перерыв.")
+            void speak(
+              "Время вышло! Сделай перерыв и загляни в Партнера (Earnings Vault) за промокодом!",
+            )
               .catch((speakError: unknown) =>
                 console.error("Не удалось озвучить окончание таймера:", speakError),
               )
@@ -567,6 +726,13 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     commandHandlerRef.current = handler;
   }, []);
 
+  const setOnTimerChange = useCallback(
+    (handler: (timer: ActiveVoiceTimer | null) => void) => {
+      timerHandlerRef.current = handler;
+    },
+    [],
+  );
+
   const clearError = useCallback(() => {
     setError(null);
     setPermissionIssue(false);
@@ -631,6 +797,7 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     processCommand,
     runCommand: executeCommand,
     setOnCommandResult,
+    setOnTimerChange,
     clearError,
   };
 }

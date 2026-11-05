@@ -268,6 +268,65 @@ body {
 	cursor: pointer;
 }
 
+.home-mic-wrap.has-active-timer {
+	margin-top: 6px;
+}
+
+.home-mic-wrap.has-active-timer .home-mic-button {
+	margin-top: 0;
+}
+
+.active-timer {
+	position: relative;
+	display: grid;
+	width: 88px;
+	height: 88px;
+	place-items: center;
+	margin: 12px auto 0;
+	color: #ffe9a8;
+}
+
+.active-timer-ring {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	transform: rotate(-90deg);
+}
+
+.active-timer-track,
+.active-timer-progress {
+	fill: none;
+	stroke-width: 4;
+}
+
+.active-timer-track {
+	stroke: rgba(255, 255, 255, 0.16);
+}
+
+.active-timer-progress {
+	stroke: #5eead4;
+	stroke-linecap: round;
+	transition: stroke-dashoffset 0.8s linear;
+	filter: drop-shadow(0 0 5px rgba(94, 234, 212, 0.55));
+}
+
+.active-timer-icon {
+	position: absolute;
+	top: 21px;
+	width: 16px;
+	height: 16px;
+	color: #5eead4;
+}
+
+.active-timer-label {
+	margin-top: 20px;
+	font-size: 17px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0.03em;
+}
+
 .home-mic-button:focus-visible,
 .wake-word-toggle:focus-visible,
 .voice-fallback-form button:focus-visible,
