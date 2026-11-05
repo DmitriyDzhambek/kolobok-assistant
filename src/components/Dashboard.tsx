@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Sun, Target, Coins } from "lucide-react";
+import { Sun, Target, Flame } from "lucide-react";
 
 /**
  * Тип для карточки дашборда
@@ -67,12 +67,12 @@ export function Dashboard() {
         />
       </div>
 
-      {/* Карточка заработка - снизу */}
+      {/* Карточка стрика - снизу */}
       <div className="absolute left-1/2 -translate-x-1/2 bottom-4 transform">
         <DashboardCard
-          icon={<Coins className="w-8 h-8 text-yellow-500" />}
-          label="Заработано"
-          value="120 ₽"
+          icon={<Flame className="w-8 h-8 text-orange-500" />}
+          label="Стрик дней"
+          value="0"
           delay={0.5}
         />
       </div>
