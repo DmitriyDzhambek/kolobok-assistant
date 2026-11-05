@@ -17,8 +17,10 @@ import {
 type WeatherData = {
   temperature: number;
   code: number;
+  condition: string;
   isDay: boolean;
   timezone: string;
+  provider: "yandex" | "open-meteo";
 };
 
 type DashboardCardProps = {
@@ -123,32 +125,72 @@ function WeatherCard() {
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
         try {
-          const params = new URLSearchParams({
+          const query = new URLSearchParams({
+            latitude: String(coords.latitude),
+            longitude: String(coords.longitude),
+          });
+          try {
+            const yandexResponse = await fetch(`/api/weather?${query.toString()}`);
+            if (yandexResponse.ok) {
+              const result: {
+                temperature?: number;
+                code?: number;
+                condition?: string;
+                isDay?: boolean;
+                provider?: string;
+              } = await yandexResponse.json();
+              if (
+                typeof result.temperature === "number" &&
+                typeof result.code === "number" &&
+                typeof result.condition === "string" &&
+                typeof result.isDay === "boolean"
+              ) {
+                setWeather({
+                  temperature: result.temperature,
+                  code: result.code,
+                  condition: result.condition,
+                  isDay: result.isDay,
+                  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                  provider: "yandex",
+                });
+                return;
+              }
+              console.warn("Яндекс.Погода вернула неполные данные; используется резервный источник.");
+            } else {
+              console.warn(
+                `Яндекс.Погода недоступна (${yandexResponse.status}); используется резервный источник.`,
+              );
+            }
+          } catch (yandexError) {
+            console.warn("Не удалось получить ответ от Яндекс.Погоды; используется резервный источник.", yandexError);
+          }
+
+          const fallbackParams = new URLSearchParams({
             latitude: String(coords.latitude),
             longitude: String(coords.longitude),
             current: "temperature_2m,weather_code,is_day",
             timezone: "auto",
           });
-          const response = await fetch(
-            `https://api.open-meteo.com/v1/forecast?${params.toString()}`,
+          const fallbackResponse = await fetch(
+            `https://api.open-meteo.com/v1/forecast?${fallbackParams.toString()}`,
           );
-          if (!response.ok) {
-            throw new Error(`Weather request failed: ${response.status}`);
+          if (!fallbackResponse.ok) {
+            throw new Error(`Weather request failed: ${fallbackResponse.status}`);
           }
 
-          const result: {
+          const fallback: {
             timezone?: string;
             current?: {
               temperature_2m?: number;
               weather_code?: number;
               is_day?: number;
             };
-          } = await response.json();
-          const current = result.current;
+          } = await fallbackResponse.json();
+          const current = fallback.current;
           if (
             typeof current?.temperature_2m !== "number" ||
             typeof current.weather_code !== "number" ||
-            !result.timezone
+            !fallback.timezone
           ) {
             throw new Error("Weather response is incomplete");
           }
@@ -156,8 +198,10 @@ function WeatherCard() {
           setWeather({
             temperature: Math.round(current.temperature_2m),
             code: current.weather_code,
+            condition: weatherDescription(current.weather_code),
             isDay: current.is_day === 1,
-            timezone: result.timezone,
+            timezone: fallback.timezone,
+            provider: "open-meteo",
           });
         } catch (requestError) {
           console.error("Не удалось загрузить погоду:", requestError);
@@ -185,14 +229,14 @@ function WeatherCard() {
           type="button"
           className="dashboard-card dashboard-weather-card"
           onClick={loadWeather}
-          aria-label={`Погода рядом с вами: ${weatherDescription(weather.code)}, ${weather.temperature} градусов. Местное время ${localTime}. Обновить`}
+          aria-label={`Погода рядом с вами: ${weather.condition}, ${weather.temperature} градусов. Местное время ${localTime}. Источник: ${weather.provider === "yandex" ? "Яндекс.Погода" : "резервный источник"}. Обновить`}
         >
           <div className="dashboard-card-icon">
             <WeatherIcon code={weather.code} isDay={weather.isDay} />
           </div>
           <div className="dashboard-card-copy">
             <div className="dashboard-card-label">
-              {weatherDescription(weather.code)} · {localTime}
+              {weather.condition} · {localTime}
             </div>
             <div className="dashboard-card-value">{weather.temperature}°C</div>
           </div>

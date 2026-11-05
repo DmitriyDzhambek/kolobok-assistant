@@ -14,12 +14,17 @@
 			"use": "@vercel/node"
 		},
 		{
+			"src": "api/weather.ts",
+			"use": "@vercel/node"
+		},
+		{
 			"src": "api/index.py",
 			"use": "@vercel/python"
 		}
 	],
 	"rewrites": [
 		{ "source": "/api/notify", "destination": "/api/notify.ts" },
+		{ "source": "/api/weather", "destination": "/api/weather.ts" },
 		{ "source": "/api/(.*)", "destination": "/api/index.py" },
 		{ "source": "/ws", "destination": "/api/index.py" },
 		{ "source": "/(.*)", "destination": "/index.html" }
