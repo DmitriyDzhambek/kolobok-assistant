@@ -5,8 +5,8 @@
   "type": "module",
   "description": "Голосовой помощник «Колобок» для рабочего стола Windows 10: «Ты отдыхай, а я для тебя заработаю»",
   "scripts": {
-    "start": "vite",
-    "dev": "vite",
+    "start": "vite --port 8080",
+    "dev": "vite --port 8080",
     "build": "vite build",
     "preview": "vite preview",
     "backend": "python backend/macro_server.py",
