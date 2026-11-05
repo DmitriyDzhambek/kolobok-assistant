@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { localHabitsView } from "../habits/localStore";
+import { findQuickEarningProject } from "../data/earningProjects";
 
 export type VoiceStatus =
   | "idle"
@@ -15,6 +16,7 @@ export type VoiceAction =
   | "time"
   | "math"
   | "joke"
+  | "earningSuggestion"
   | "unknown";
 
 export interface ActiveVoiceTimer {
@@ -26,6 +28,7 @@ export interface ActiveVoiceTimer {
 export interface VoiceResult {
   text: string;
   action: VoiceAction;
+  suggestedProjectId?: string;
 }
 
 export interface VoiceConfig {
@@ -291,7 +294,28 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
 
   const processCommand = useCallback((text: string): VoiceResult => {
     const normalized = text.toLocaleLowerCase("ru-RU").replace(/ё/g, "е");
-    if (/таймер|напомни\s+через|минут/i.test(normalized)) {
+    const freeTimeMatch = normalized.match(
+      /(\d{1,3})\s*(?:минут(?:а|ы)?|мин)\s*(?:свободного\s+времени|свободн\w*)?/,
+    );
+    if (
+      freeTimeMatch &&
+      (/свободн|есть\s+\d+|могу\s+(?:уделить|выделить)/i.test(normalized))
+    ) {
+      const availableMinutes = Number(freeTimeMatch[1]);
+      const project = findQuickEarningProject(availableMinutes);
+      if (project) {
+        return {
+          text: `Отлично! За ${availableMinutes} минут ты успеешь ${project.quickTaskDescription} в ${project.title}. Открыть?`,
+          action: "earningSuggestion",
+          suggestedProjectId: project.id,
+        };
+      }
+      return {
+        text: `Пока нет задания, которое можно уверенно предложить на ${availableMinutes} минут. Загляни в Магию — там собраны доступные проекты.`,
+        action: "earningSuggestion",
+      };
+    }
+    if (/таймер|напомни\s+через/i.test(normalized)) {
       const duration = parseTimerDuration(normalized);
       if (duration === null) {
         return {

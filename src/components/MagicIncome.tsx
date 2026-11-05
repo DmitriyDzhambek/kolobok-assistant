@@ -1,45 +1,36 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, DollarSign, Gem, Sparkles } from "lucide-react";
+import { ArrowUpRight, DollarSign, Gem, Sparkles, Timer } from "lucide-react";
 import { AutoPilotModal } from "./AutoPilotModal";
+import { EARNING_PROJECTS, type EarningProject } from "../data/earningProjects";
+import type { CryptoCurrency } from "../dreams/storage";
 
-type IncomeProject = {
-  id: string;
-  title: string;
-  description: string;
-  reward: string;
-  tags: string[];
-  icon: typeof DollarSign;
-  url: string;
+type MagicIncomeProps = {
+  suggestedProjectId?: string;
+  onSuggestionHandled?: () => void;
+  onEarningRecorded?: (amount: number, currency: CryptoCurrency) => void;
 };
 
-const incomeProjects: IncomeProject[] = [
-  {
-    id: "usdttonflow",
-    title: "USDT TonFlow",
-    description:
-      "Приглашай друзей, получай 20 % от дохода каждого друга и напиши им спасибо за труд.",
-    reward: "20 % от дохода друзей",
-    tags: ["TON", "USDT", "Реклама"],
-    icon: DollarSign,
-    url: "https://t.me/UsdtTonFlow_bot?startapp=UHFCI2C",
-  },
-  {
-    id: "moneybux",
-    title: "Money Bux",
-    description:
-      "Смотри рекламу, выполняй задания и обменивай золото на TON и USDT.",
-    reward: "Награды за задания",
-    tags: ["TON", "USDT", "Реклама"],
-    icon: Gem,
-    url: "https://t.me/MBuxBot/app?startapp=r_1053702516",
-  },
-];
+function projectIcon(project: EarningProject) {
+  return project.id === "moneybux" ? Gem : DollarSign;
+}
 
-export function MagicIncome() {
-  const [selectedProject, setSelectedProject] = useState<IncomeProject | null>(
+export function MagicIncome({
+  suggestedProjectId,
+  onSuggestionHandled,
+  onEarningRecorded,
+}: MagicIncomeProps) {
+  const [selectedProject, setSelectedProject] = useState<EarningProject | null>(
     null,
   );
+  const suggestedProject = EARNING_PROJECTS.find(
+    (project) => project.id === suggestedProjectId,
+  );
+
+  const selectProject = (project: EarningProject) => {
+    setSelectedProject(project);
+    onSuggestionHandled?.();
+  };
 
   return (
     <section className="magic-screen" aria-labelledby="magic-title">
@@ -52,9 +43,37 @@ export function MagicIncome() {
         <p>Выбери проект и узнай, как начать.</p>
       </div>
 
+      <AnimatePresence>
+        {suggestedProject && (
+          <motion.aside
+            className="smart-earning-card"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+          >
+            <div className="smart-earning-icon">
+              <Timer size={22} aria-hidden="true" />
+            </div>
+            <div className="smart-earning-copy">
+              <span>ПОД ТВОЁ СВОБОДНОЕ ВРЕМЯ</span>
+              <strong>{suggestedProject.title}</strong>
+              <p>{suggestedProject.quickTaskDescription}</p>
+            </div>
+            <button
+              type="button"
+              className="income-earn-button"
+              onClick={() => selectProject(suggestedProject)}
+            >
+              Открыть
+              <ArrowUpRight size={17} aria-hidden="true" />
+            </button>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
       <div className="magic-grid">
-        {incomeProjects.map((project, index) => {
-          const Icon = project.icon;
+        {EARNING_PROJECTS.map((project, index) => {
+          const Icon = projectIcon(project);
           return (
             <motion.article
               key={project.id}
@@ -85,7 +104,7 @@ export function MagicIncome() {
                 <button
                   type="button"
                   className="income-earn-button"
-                  onClick={() => setSelectedProject(project)}
+                  onClick={() => selectProject(project)}
                 >
                   Заработать
                   <ArrowUpRight size={17} aria-hidden="true" />
@@ -102,6 +121,7 @@ export function MagicIncome() {
             key={selectedProject.id}
             isOpen
             onClose={() => setSelectedProject(null)}
+            onEarningRecorded={onEarningRecorded}
             projectName={selectedProject.title}
             telegramLink={selectedProject.url}
           />

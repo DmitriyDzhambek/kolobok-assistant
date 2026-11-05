@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Home, Mic, MicOff, Sparkles, Users } from "lucide-react";
+import {
+  Clock,
+  Gift,
+  Home,
+  Mic,
+  MicOff,
+  Sparkles,
+  Users,
+} from "lucide-react";
 import { Kolobok } from "./components/Kolobok";
 import { Background } from "./components/Background";
 import { FirefliesCanvas } from "./components/FirefliesCanvas";
@@ -8,8 +16,12 @@ import { Dashboard } from "./components/Dashboard";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { MagicIncome } from "./components/MagicIncome";
 import { PartnerTab } from "./components/PartnerTab";
+import { DreamJar } from "./components/DreamJar";
+import { EnglishModal } from "./components/EnglishModal";
 import { useVoiceAssistant } from "./hooks/useVoiceAssistant";
 import type { ActiveVoiceTimer } from "./hooks/useVoiceAssistant";
+import { localAdd, localHabitsView, localMark } from "./habits/localStore";
+import { recordCryptoEarning, type CryptoCurrency } from "./dreams/storage";
 import { initTma, tgWebApp } from "./tma";
 import type { TimeOfDay } from "./utils/timeContext";
 import "./styles.css";
@@ -17,7 +29,20 @@ import "./styles.css";
 /**
  * Тип вкладки
  */
-type TabType = "main" | "magic" | "partner";
+type TabType = "main" | "magic" | "partner" | "dreams";
+
+const CRYSTALS_KEY = "kolobok.english-crystals.v1";
+
+function readCrystals(): number {
+  try {
+    if (typeof window === "undefined") return 0;
+    const saved = Number(window.localStorage.getItem(CRYSTALS_KEY) ?? "0");
+    return Number.isFinite(saved) ? Math.max(0, saved) : 0;
+  } catch (error) {
+    console.error("Не удалось прочитать счётчик кристаллов:", error);
+    return 0;
+  }
+}
 
 /**
  * Приложение Kolobok с голосовым ассистентом и навигацией
@@ -30,6 +55,10 @@ export default function App() {
   const [isTelegramMiniApp, setIsTelegramMiniApp] = useState(false);
   const [activeTimer, setActiveTimer] = useState<ActiveVoiceTimer | null>(null);
   const [timerNow, setTimerNow] = useState(() => Date.now());
+  const [isEnglishOpen, setIsEnglishOpen] = useState(false);
+  const [crystals, setCrystals] = useState(readCrystals);
+  const [dreamRevision, setDreamRevision] = useState(0);
+  const [suggestedProjectId, setSuggestedProjectId] = useState<string>();
   const fallbackInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -61,12 +90,21 @@ export default function App() {
     stopRecognition,
     setWakeWordMode,
     runCommand,
+    speak,
     setOnCommandResult,
     setOnTimerChange,
     clearError,
   } = useVoiceAssistant({ lang: "ru-RU" });
-  const handleCommandResult = useCallback((result: { text: string }) => {
+  const handleCommandResult = useCallback((result: {
+    text: string;
+    action?: string;
+    suggestedProjectId?: string;
+  }) => {
     setBotText(result.text);
+    if (result.action === "earningSuggestion" && result.suggestedProjectId) {
+      setSuggestedProjectId(result.suggestedProjectId);
+      setActiveTab("magic");
+    }
   }, []);
 
   useEffect(() => {
@@ -80,6 +118,26 @@ export default function App() {
   useEffect(() => {
     setOnTimerChange(handleTimerChange);
   }, [handleTimerChange, setOnTimerChange]);
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 6 || hour >= 11) return;
+    const today = new Date().toLocaleDateString("sv-SE");
+    const greetingKey = "kolobok.morning-greeting.v1";
+    try {
+      if (window.localStorage.getItem(greetingKey) === today) return;
+      window.localStorage.setItem(greetingKey, today);
+    } catch (storageError) {
+      console.error("Не удалось сохранить отметку утреннего приветствия:", storageError);
+    }
+
+    const greeting =
+      "Доброе утро! Погоду можно проверить по твоему местоположению в карточке. Твой фокус дня — Английский. Выполним? Или сразу пойдём в Магию зарабатывать?";
+    setBotText(greeting);
+    void speak(greeting).catch((speechError: unknown) =>
+      console.info("Браузер не разрешил автоматическое утреннее озвучивание:", speechError),
+    );
+  }, [speak]);
 
   useEffect(() => {
     if (!activeTimer) return;
@@ -128,6 +186,58 @@ export default function App() {
     void setWakeWordMode(!isWakeWordMode);
   };
 
+  const handleEnglishLearned = useCallback(() => {
+    const nextCrystals = crystals + 10;
+    let crystalsSaved = true;
+    try {
+      window.localStorage.setItem(CRYSTALS_KEY, String(nextCrystals));
+      setCrystals(nextCrystals);
+    } catch (storageError) {
+      crystalsSaved = false;
+      console.error("Не удалось сохранить кристаллы за урок:", storageError);
+    }
+
+    let englishHabit = localHabitsView().habits.find((habit) =>
+      /английск/i.test(habit.title),
+    );
+    if (!englishHabit) {
+      const addError = localAdd("Английский", "📘");
+      englishHabit = localHabitsView().habits.find((habit) =>
+        /английск/i.test(habit.title),
+      );
+      if (!englishHabit && addError) {
+        console.error("Не удалось добавить привычку «Английский»:", addError);
+      }
+    }
+    if (englishHabit) localMark(englishHabit.id, "done");
+    setBotText(
+      crystalsSaved
+        ? englishHabit
+          ? "Отличная работа! +10 кристаллов и привычка «Английский» отмечена."
+          : "Слово выучено и +10 кристаллов начислены, но привычку «Английский» добавить не удалось."
+        : "Слово выучено! Кристаллы не сохранились — проверь память браузера.",
+    );
+  }, [crystals]);
+
+  const handleEarningRecorded = useCallback(
+    (amount: number, currency: CryptoCurrency): boolean => {
+      try {
+        recordCryptoEarning(amount, currency);
+        setDreamRevision((revision) => revision + 1);
+        setBotText(`Записал ${amount} ${currency} в баланс Сундука желаний.`);
+        return true;
+      } catch (earningError) {
+        console.error("Не удалось записать заработок в сундук желаний:", earningError);
+        return false;
+      }
+    },
+    [],
+  );
+
+  const handleSuggestionHandled = useCallback(() => {
+    setSuggestedProjectId(undefined);
+  }, []);
+
   // Переключение вкладок
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
@@ -168,7 +278,7 @@ export default function App() {
               transition={{ duration: 0.3 }}
             >
               {/* Интерактивный дашборд */}
-              <Dashboard />
+              <Dashboard onFocusClick={() => setIsEnglishOpen(true)} />
 
               {/* Колобок по центру */}
               <div className="home-content">
@@ -316,7 +426,11 @@ export default function App() {
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
             >
-              <MagicIncome />
+              <MagicIncome
+                suggestedProjectId={suggestedProjectId}
+                onSuggestionHandled={handleSuggestionHandled}
+                onEarningRecorded={handleEarningRecorded}
+              />
             </motion.main>
           )}
 
@@ -330,6 +444,19 @@ export default function App() {
               transition={{ duration: 0.3 }}
             >
               <PartnerTab />
+            </motion.main>
+          )}
+
+          {activeTab === "dreams" && (
+            <motion.main
+              key="dreams"
+              className="stage relative app-screen"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <DreamJar revision={dreamRevision} />
             </motion.main>
           )}
         </AnimatePresence>
@@ -379,8 +506,27 @@ export default function App() {
             <Users className="w-5 h-5" />
             <span>Партнёр</span>
           </motion.button>
+
+          <motion.button
+            className={`bottom-nav-button${activeTab === "dreams" ? " is-active" : ""}`}
+            onClick={() => handleTabChange("dreams")}
+            type="button"
+            aria-current={activeTab === "dreams" ? "page" : undefined}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Gift className="w-5 h-5" />
+            <span>Мечты</span>
+          </motion.button>
         </div>
       </motion.nav>
+
+      <EnglishModal
+        isOpen={isEnglishOpen}
+        crystals={crystals}
+        onClose={() => setIsEnglishOpen(false)}
+        onLearned={handleEnglishLearned}
+      />
 
       {permissionIssue && (
         <div className="permission-overlay" role="presentation">

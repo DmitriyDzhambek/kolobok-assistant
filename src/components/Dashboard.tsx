@@ -13,6 +13,7 @@ import {
   Sun,
   Target,
 } from "lucide-react";
+import { localHabitsView } from "../habits/localStore";
 
 type WeatherData = {
   temperature: number;
@@ -30,7 +31,40 @@ type DashboardCardProps = {
   delay: number;
 };
 
-function DashboardCard({ icon, label, value, delay }: DashboardCardProps) {
+function DashboardCard({
+  icon,
+  label,
+  value,
+  delay,
+  onClick,
+}: DashboardCardProps & { onClick?: () => void }) {
+  const content = (
+    <>
+      <div className="dashboard-card-icon">{icon}</div>
+      <div className="dashboard-card-copy">
+        <div className="dashboard-card-label">{label}</div>
+        <div className="dashboard-card-value">{value}</div>
+      </div>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <motion.button
+        type="button"
+        className="dashboard-card dashboard-focus-card"
+        onClick={onClick}
+        aria-label={`${label}: ${value}. Открыть тренажёр английского`}
+        initial={{ y: 0 }}
+        animate={{ y: [-6, 0, -6] }}
+        transition={{ duration: 3, ease: "easeInOut", repeat: Infinity, delay }}
+        whileHover={{ scale: 1.04 }}
+      >
+        {content}
+      </motion.button>
+    );
+  }
+
   return (
     <motion.div
       className="dashboard-card"
@@ -43,11 +77,7 @@ function DashboardCard({ icon, label, value, delay }: DashboardCardProps) {
         delay,
       }}
     >
-      <div className="dashboard-card-icon">{icon}</div>
-      <div className="dashboard-card-copy">
-        <div className="dashboard-card-label">{label}</div>
-        <div className="dashboard-card-value">{value}</div>
-      </div>
+      {content}
     </motion.div>
   );
 }
@@ -268,7 +298,12 @@ function WeatherCard() {
   );
 }
 
-export function Dashboard() {
+export function Dashboard({ onFocusClick }: { onFocusClick?: () => void }) {
+  const streakDays = localHabitsView().habits.reduce(
+    (longest, habit) => Math.max(longest, habit.streak),
+    0,
+  );
+
   return (
     <div className="dashboard-overlay" aria-label="Сводка дня">
       <WeatherCard />
@@ -278,13 +313,14 @@ export function Dashboard() {
           label="Фокус дня"
           value="Английский"
           delay={1}
+          onClick={onFocusClick}
         />
       </div>
       <div className="dashboard-position dashboard-streak-position">
         <DashboardCard
           icon={<Flame className="dashboard-stat-icon dashboard-streak-icon" />}
           label="Стрик дней"
-          value="0"
+          value={String(streakDays)}
           delay={0.5}
         />
       </div>

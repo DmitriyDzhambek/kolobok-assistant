@@ -3,12 +3,17 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Clock3, ExternalLink, X } from "lucide-react";
 import { tgWebApp } from "../tma";
+import type { CryptoCurrency } from "../dreams/storage";
 
 type AutoPilotStep = 1 | 2 | 3;
 
 export interface AutoPilotModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onEarningRecorded?: (
+    amount: number,
+    currency: CryptoCurrency,
+  ) => boolean | void;
   projectName?: string;
   telegramLink?: string;
 }
@@ -16,12 +21,15 @@ export interface AutoPilotModalProps {
 export function AutoPilotModal({
   isOpen,
   onClose,
+  onEarningRecorded,
   projectName = "Задание",
   telegramLink = "",
 }: AutoPilotModalProps) {
   const [step, setStep] = useState<AutoPilotStep>(1);
   const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState<"USDT" | "TON">("USDT");
   const [timeLeft, setTimeLeft] = useState(15);
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     if (!isOpen || step !== 2 || timeLeft <= 0) return;
@@ -72,8 +80,18 @@ export function AutoPilotModal({
   const advance = () => {
     if (step === 1) openProject();
     else if (step === 2) setStep(3);
-    else onClose();
+    else {
+      const earnedAmount = Number(amount);
+      if (!Number.isFinite(earnedAmount) || earnedAmount <= 0) return;
+      const saved = onEarningRecorded?.(earnedAmount, currency);
+      if (saved === false) {
+        setSaveError("Не удалось сохранить сумму в сундуке. Попробуй ещё раз.");
+        return;
+      }
+      onClose();
+    }
   };
+  const validAmount = Number.isFinite(Number(amount)) && Number(amount) > 0;
 
   return createPortal(
     <AnimatePresence>
@@ -128,26 +146,46 @@ export function AutoPilotModal({
           <p className="autopilot-copy">{stepText[step]}</p>
 
           {step === 3 && (
-            <label className="autopilot-amount">
-              <span>Сумма заработка</span>
-              <span className="autopilot-amount-field">
-                <input
-                  type="number"
-                  min="0"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
-                />
-                <span>₽</span>
+            <div className="autopilot-amount">
+              <span>Сумма заработка для личного учёта</span>
+              <div className="autopilot-crypto-fields">
+                <label className="autopilot-amount-field">
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={amount}
+                    onChange={(event) => setAmount(event.target.value)}
+                    aria-label="Сумма заработка"
+                  />
+                </label>
+                <label className="autopilot-currency">
+                  <span className="sr-only">Валюта накопления</span>
+                  <select
+                    value={currency}
+                    onChange={(event) =>
+                      setCurrency(event.target.value === "TON" ? "TON" : "USDT")
+                    }
+                  >
+                    <option value="USDT">USDT</option>
+                    <option value="TON">TON</option>
+                  </select>
+                </label>
+              </div>
+              <span className="autopilot-amount-hint">
+                Сумма добавится в баланс сундука желаний. Это запись для личного учёта.
               </span>
-            </label>
+              {saveError && <span className="autopilot-save-error" role="alert">{saveError}</span>}
+            </div>
           )}
 
           <button
             type="button"
             className="autopilot-action"
             onClick={advance}
+            disabled={step === 3 && !validAmount}
           >
             {step === 1 ? (
               <>
