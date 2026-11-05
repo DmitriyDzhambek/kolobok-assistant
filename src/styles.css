@@ -268,6 +268,115 @@ body {
 	cursor: pointer;
 }
 
+.home-mic-button:focus-visible,
+.wake-word-toggle:focus-visible,
+.voice-fallback-form button:focus-visible,
+.voice-fallback-form input:focus-visible,
+.permission-dialog button:focus-visible {
+	outline: 2px solid #5eead4;
+	outline-offset: 3px;
+}
+
+.bubble-error,
+.bubble-error .bubble-text {
+	color: #f87171;
+}
+
+.bubble-error {
+	border-color: rgba(248, 113, 113, 0.6);
+	background: linear-gradient(180deg, rgba(69, 20, 35, 0.96), rgba(39, 13, 30, 0.96));
+}
+
+.voice-fallback-form {
+	display: grid;
+	width: min(100%, 360px);
+	gap: 7px;
+	margin-top: 15px;
+}
+
+.voice-fallback-label {
+	color: rgba(239, 233, 255, 0.66);
+	font-size: 13px;
+	text-align: left;
+}
+
+.voice-fallback-row {
+	display: flex;
+	gap: 8px;
+}
+
+.voice-fallback-row input {
+	width: 100%;
+	min-width: 0;
+	padding: 11px 13px;
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	border-radius: 12px;
+	background: rgba(255, 255, 255, 0.07);
+	color: white;
+	font: inherit;
+}
+
+.voice-fallback-row input::placeholder {
+	color: rgba(239, 233, 255, 0.45);
+}
+
+.voice-fallback-row button,
+.permission-dialog button {
+	flex: none;
+	padding: 10px 14px;
+	border: 0;
+	border-radius: 12px;
+	background: linear-gradient(135deg, #facc15, #fb923c);
+	color: #271706;
+	font: 700 14px "Neucha", "Segoe UI", system-ui, sans-serif;
+	cursor: pointer;
+}
+
+.voice-fallback-row button:disabled {
+	cursor: not-allowed;
+	opacity: 0.55;
+}
+
+.permission-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 1100;
+	display: grid;
+	place-items: center;
+	padding: 20px;
+	background: rgba(4, 3, 12, 0.78);
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+}
+
+.permission-dialog {
+	width: min(100%, 410px);
+	padding: 25px;
+	border: 1px solid rgba(248, 113, 113, 0.24);
+	border-radius: 22px;
+	background: #17122b;
+	color: #fff;
+	text-align: center;
+	box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
+}
+
+.permission-dialog h2 {
+	margin: 0 0 10px;
+	color: #fff3f4;
+	font-size: 22px;
+}
+
+.permission-dialog p {
+	margin: 0 0 20px;
+	color: rgba(239, 233, 255, 0.76);
+	font-size: 15px;
+	line-height: 1.55;
+}
+
+.permission-dialog button {
+	min-width: 130px;
+}
+
 .wake-word-toggle {
 	display: inline-flex;
 	align-items: center;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Home, Mic, MicOff, Sparkles, Users } from "lucide-react";
 import { Kolobok } from "./components/Kolobok";
@@ -25,7 +25,9 @@ export default function App() {
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>("night");
   const [activeTab, setActiveTab] = useState<TabType>("main");
   const [botText, setBotText] = useState("Привет! Я Колобок. Ты отдыхай, а я для тебя заработаю!");
+  const [commandDraft, setCommandDraft] = useState("");
   const [isTelegramMiniApp, setIsTelegramMiniApp] = useState(false);
+  const fallbackInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     initTma();
@@ -46,16 +48,18 @@ export default function App() {
 
   // Голосовой ассистент
   const {
-    status,
     isListening,
     interimText,
     error,
     isSupported,
     isWakeWordMode,
+    permissionIssue,
     startRecognition,
     stopRecognition,
     setWakeWordMode,
+    runCommand,
     setOnCommandResult,
+    clearError,
   } = useVoiceAssistant({ lang: "ru-RU" });
   const handleCommandResult = useCallback((result: { text: string }) => {
     setBotText(result.text);
@@ -79,18 +83,28 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    setOnCommandResult((result) => setBotText(result.text));
-  }, [setOnCommandResult]);
-
   // Обработка клика по микрофону
   const handleMicClick = useCallback(() => {
-    if (isListening) {
+    if (!isSupported) {
+      fallbackInputRef.current?.focus();
+    } else if (isListening) {
       stopRecognition();
     } else {
       startRecognition();
     }
-  }, [isListening, startRecognition, stopRecognition]);
+  }, [isListening, isSupported, startRecognition, stopRecognition]);
+
+  const handleFallbackSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const text = commandDraft.trim();
+    if (!text) return;
+    setCommandDraft("");
+    try {
+      await runCommand(text);
+    } catch (speakError) {
+      console.error("Не удалось озвучить ответ:", speakError);
+    }
+  };
 
   const handleWakeWordToggle = () => {
     void setWakeWordMode(!isWakeWordMode);
@@ -103,19 +117,7 @@ export default function App() {
       stopRecognition();
     }
   };
-
-  // Анимация микрофона
-  const micAnimation = {
-    idle: { scale: 1, boxShadow: "0 0 20px rgba(255,255,255,0.2)" },
-    listening: {
-      scale: [1, 1.05, 1],
-      boxShadow: [
-        "0 0 20px rgba(255,255,255,0.2)",
-        "0 0 30px rgba(139,92,246,0.5)",
-        "0 0 20px rgba(255,255,255,0.2)",
-      ],
-    },
-  };
+  const visibleError = permissionIssue ? null : error;
 
   return (
     <div className={`app tod-${timeOfDay}`} data-platform={isTelegramMiniApp ? "telegram" : "web"}>
@@ -153,16 +155,16 @@ export default function App() {
 
                 {/* Облачко с текстом */}
                 <motion.div
-                  className="bubble mt-4 min-w-[280px]"
-                  key={botText}
+                  className={`bubble mt-4 min-w-[280px]${visibleError ? " bubble-error" : ""}`}
+                  key={visibleError ? `error-${visibleError}` : botText}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.3 }}
                 >
                   <div className="bubble-text whitespace-pre-wrap">
-                    {error ? error : botText}
+                    {visibleError || botText}
                   </div>
-                  {interimText && (
+                  {!visibleError && interimText && (
                     <div className="bubble-text text-white/60 italic mt-1">
                       {interimText}...
                     </div>
@@ -181,38 +183,70 @@ export default function App() {
                     onClick={handleMicClick}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
+                    animate={
+                      isListening || !isSupported
+                        ? { scale: [1, 1.1, 1], boxShadow: ["0 0 22px rgba(255,215,102,.4)", "0 0 38px rgba(45,212,191,.58)", "0 0 22px rgba(255,215,102,.4)"] }
+                        : { scale: 1, boxShadow: "0 0 28px rgba(245,158,11,.4)" }
+                    }
+                    transition={
+                      isListening || !isSupported
+                        ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
+                        : { duration: 0.2 }
+                    }
+                    aria-label={
+                      isSupported
+                        ? isListening
+                          ? "Остановить микрофон"
+                          : "Начать голосовой ввод"
+                        : "Перейти к вводу команды"
+                    }
                   >
                     {isListening ? (
                       <MicOff className="w-7 h-7 text-white" />
                     ) : (
                       <Mic className="w-7 h-7 text-white" />
                     )}
-                    {!isSupported && (
-                      <span className="sr-only">
-                        Твой браузер не поддерживает слух Колобка. Используй кнопку микрофона.
-                      </span>
-                    )}
                   </motion.button>
                 </motion.div>
-                <button
-                  type="button"
-                  className={`wake-word-toggle${isWakeWordMode ? " is-enabled" : ""}`}
-                  role="switch"
-                  aria-checked={isWakeWordMode}
-                  onClick={handleWakeWordToggle}
-                  disabled={!isSupported}
-                >
-                  <span className="wake-word-toggle-track" aria-hidden="true">
-                    <span />
-                  </span>
-                  <span>
-                    Режим: {isWakeWordMode ? "Слушаю" : "выключен"}
-                  </span>
-                </button>
-                {!isSupported && (
+                {isSupported ? (
+                  <button
+                    type="button"
+                    className={`wake-word-toggle${isWakeWordMode ? " is-enabled" : ""}`}
+                    role="switch"
+                    aria-checked={isWakeWordMode}
+                    onClick={handleWakeWordToggle}
+                  >
+                    <span className="wake-word-toggle-track" aria-hidden="true">
+                      <span />
+                    </span>
+                    <span>Режим: {isWakeWordMode ? "Слушаю" : "выключен"}</span>
+                  </button>
+                ) : (
                   <p className="wake-word-hint" role="status">
-                    Твой браузер не поддерживает слух Колобка. Используй кнопку микрофона.
+                    Постоянное распознавание недоступно. Нажми на микрофон и введи
+                    команду с клавиатуры или воспользуйся голосовым вводом клавиатуры.
                   </p>
+                )}
+                {!isSupported && (
+                  <form className="voice-fallback-form" onSubmit={handleFallbackSubmit}>
+                    <label className="voice-fallback-label" htmlFor="voice-fallback">
+                      Команда для Колобка
+                    </label>
+                    <div className="voice-fallback-row">
+                      <input
+                        ref={fallbackInputRef}
+                        id="voice-fallback"
+                        type="text"
+                        value={commandDraft}
+                        onChange={(event) => setCommandDraft(event.target.value)}
+                        placeholder="Например: таймер на 10 минут"
+                        autoComplete="off"
+                      />
+                      <button type="submit" disabled={!commandDraft.trim()}>
+                        Сказать
+                      </button>
+                    </div>
+                  </form>
                 )}
               </div>
             </motion.main>
@@ -293,16 +327,24 @@ export default function App() {
         </div>
       </motion.nav>
 
-      {/* Подсказка для микрофона (если ошибка) */}
-      {error && status === "error" && (
-        <motion.div
-          className="fixed bottom-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-        >
-          {error}
-        </motion.div>
+      {permissionIssue && (
+        <div className="permission-overlay" role="presentation">
+          <section
+            className="permission-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="permission-title"
+          >
+            <h2 id="permission-title">Нужен доступ к микрофону</h2>
+            <p>
+              Пожалуйста, разреши доступ к микрофону в настройках браузера
+              (нажми на замочек в адресной строке).
+            </p>
+            <button type="button" onClick={clearError}>
+              Понятно
+            </button>
+          </section>
+        </div>
       )}
     </div>
   );

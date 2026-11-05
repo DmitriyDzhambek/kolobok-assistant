@@ -76,13 +76,42 @@ function parseDuration(text: string): number | null {
   return value * multiplier;
 }
 
+function playDing() {
+  try {
+    const AudioContextConstructor =
+      window.AudioContext ??
+      (window as Window & { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+    if (!AudioContextConstructor) return;
+    const context = new AudioContextConstructor();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(880, context.currentTime);
+    oscillator.frequency.setValueAtTime(1174.66, context.currentTime + 0.09);
+    gain.gain.setValueAtTime(0.0001, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.12, context.currentTime + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.22);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.23);
+    oscillator.onended = () => void context.close();
+  } catch (audioError) {
+    console.warn("Звуковой сигнал недоступен:", audioError);
+  }
+}
+
 export function useVoiceAssistant(config: VoiceConfig = {}) {
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [interimText, setInterimText] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isSupported, setIsSupported] = useState(false);
+  const [isSupported, setIsSupported] = useState(
+    () => typeof window !== "undefined" && !!getRecognitionConstructor(),
+  );
   const [isWakeWordMode, setIsWakeWordMode] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [permissionIssue, setPermissionIssue] = useState(false);
 
   const recognitionRef = useRef<RecognitionLike | null>(null);
   const modeRef = useRef<ListenMode>("off");
@@ -96,6 +125,7 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
   const activeCommandRef = useRef(false);
   const disposedRef = useRef(false);
   const wakeRequestIdRef = useRef(0);
+  const startRetryCountRef = useRef(0);
 
   const clearTimer = (timerRef: React.MutableRefObject<number | null>) => {
     if (timerRef.current !== null) {
@@ -109,8 +139,12 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     recognitionRef.current = null;
     if (!recognition) return;
     recognition.onend = null;
-    if (abort && recognition.abort) recognition.abort();
-    else recognition.stop();
+    try {
+      if (abort && recognition.abort) recognition.abort();
+      else recognition.stop();
+    } catch (stopError) {
+      console.warn("Не удалось штатно остановить распознавание:", stopError);
+    }
   }, []);
 
   const speak = useCallback((text: string, rate = 1, pitch = 1) => {
@@ -203,6 +237,7 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     } catch (speakError) {
       console.error("Не удалось озвучить ответ:", speakError);
     }
+    return result;
   }, [processCommand, speak, stopCurrentRecognition]);
 
   const startRecognitionInstance = useCallback((requestedMode: "wake" | "command" | "manual") => {
@@ -213,13 +248,13 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
       setIsWakeWordMode(false);
       setIsListening(false);
       setIsSupported(false);
-      setStatus("error");
-      setError("Твой браузер не поддерживает слух Колобка. Используй кнопку микрофона.");
+      setStatus("idle");
       return;
     }
 
     stopCurrentRecognition(true);
     const recognition = new RecognitionAPI();
+    let didStart = false;
     recognition.lang = config.lang ?? "ru-RU";
     recognition.continuous = requestedMode === "wake";
     recognition.interimResults = true;
@@ -227,9 +262,13 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     recognitionRef.current = recognition;
 
     recognition.onstart = () => {
+      didStart = true;
+      startRetryCountRef.current = 0;
       setIsListening(true);
       setStatus("listening");
       setError(null);
+      setPermissionIssue(false);
+      if (requestedMode === "manual") playDing();
     };
     recognition.onresult = (event) => {
       let finalText = "";
@@ -256,21 +295,7 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
           setStatus("processing");
           stopCurrentRecognition();
           void (async () => {
-            try {
-              const audioContext = new AudioContext();
-              const oscillator = audioContext.createOscillator();
-              const gain = audioContext.createGain();
-              oscillator.frequency.value = 880;
-              gain.gain.setValueAtTime(0.1, audioContext.currentTime);
-              gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.12);
-              oscillator.connect(gain);
-              gain.connect(audioContext.destination);
-              oscillator.start();
-              oscillator.stop(audioContext.currentTime + 0.12);
-              oscillator.onended = () => void audioContext.close();
-            } catch (audioError) {
-              console.warn("Звуковой сигнал недоступен:", audioError);
-            }
+            playDing();
             try {
               await speak("Да, я здесь. Слушаю тебя.");
             } catch (speakError) {
@@ -326,6 +351,7 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
         setStatus("processing");
         setIsListening(false);
         stopCurrentRecognition();
+        playDing();
         void executeCommand(finalText.trim());
       }
     };
@@ -335,6 +361,8 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
         modeRef.current = "off";
         setIsWakeWordMode(false);
         setStatus("error");
+        setInterimText("");
+        setPermissionIssue(true);
         setError("Разреши доступ к микрофону в настройках браузера.");
       } else if (event.error === "network" || event.error === "audio-capture") {
         modeRef.current = "off";
@@ -355,6 +383,7 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     recognition.onend = () => {
       if (recognitionRef.current === recognition) recognitionRef.current = null;
       setIsListening(false);
+      if (requestedMode === "manual" && didStart) playDing();
       if (modeRef.current === "command") {
         clearTimer(commandTimerRef);
         activeCommandRef.current = false;
@@ -378,16 +407,34 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
       recognition.start();
     } catch (startError) {
       setIsListening(false);
-      if (modeRef.current === "wake") {
+      const denied =
+        startError instanceof DOMException &&
+        ["NotAllowedError", "PermissionDeniedError", "SecurityError"].includes(
+          startError.name,
+        ) ||
+        (startError instanceof Error &&
+          /permission denied|not allowed/i.test(startError.message));
+      if (denied) {
+        modeRef.current = "off";
+        setIsWakeWordMode(false);
+        setStatus("error");
+        setPermissionIssue(true);
+        setError(
+          "Пожалуйста, разреши доступ к микрофону в настройках браузера (нажми на замочек в адресной строке).",
+        );
+      } else if (modeRef.current === "wake" && startRetryCountRef.current < 5) {
+        startRetryCountRef.current += 1;
         clearTimer(restartTimerRef);
         restartTimerRef.current = window.setTimeout(
           () => startRecognitionInstance("wake"),
-          1000,
+          Math.min(300 * 2 ** startRetryCountRef.current, 5000),
         );
       } else {
         modeRef.current = "off";
+        setIsWakeWordMode(false);
         setStatus("error");
-        setError("Не удалось запустить микрофон. Попробуй ещё раз.");
+        setPermissionIssue(false);
+        setError("Не удалось запустить микрофон. Проверь разрешения и попробуй ещё раз.");
         console.error("Не удалось запустить распознавание:", startError);
       }
     }
@@ -415,7 +462,7 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
 
   const requestMicrophonePermission = useCallback(async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error("Браузер не предоставляет доступ к микрофону.");
+      throw new Error("Микрофон доступен только на HTTPS-сайте или localhost.");
     }
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach((track) => track.stop());
@@ -430,15 +477,17 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     stopCurrentRecognition(true);
     setInterimText("");
     setError(null);
+    setPermissionIssue(false);
     if (!enabled) {
       clearTimer(productivityReminderRef);
       setIsWakeWordMode(false);
       setIsListening(false);
+      setPermissionIssue(false);
       setStatus("idle");
       return;
     }
-    if (!isSupported) {
-      setError("Твой браузер не поддерживает слух Колобка. Используй кнопку микрофона.");
+    if (!getRecognitionConstructor()) {
+      setIsSupported(false);
       return;
     }
     try {
@@ -446,16 +495,17 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
       if (requestId !== wakeRequestIdRef.current || disposedRef.current) return;
       modeRef.current = "wake";
       setIsWakeWordMode(true);
+      playDing();
       startRecognitionInstance("wake");
       scheduleProductivityReminder();
     } catch (permissionError) {
       if (requestId !== wakeRequestIdRef.current || disposedRef.current) return;
       modeRef.current = "off";
       setIsWakeWordMode(false);
+      setInterimText("");
+      setPermissionIssue(true);
       setError(
-        permissionError instanceof Error
-          ? permissionError.message
-          : "Не удалось получить доступ к микрофону.",
+        "Пожалуйста, разреши доступ к микрофону в настройках браузера (нажми на замочек в адресной строке).",
       );
       setStatus("error");
     }
@@ -463,24 +513,35 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
 
   const startRecognition = useCallback(async () => {
     wakeRequestIdRef.current += 1;
-    if (!isSupported) {
-      setError("Твой браузер не поддерживает слух Колобка. Используй кнопку микрофона.");
-      setStatus("error");
+    if (!getRecognitionConstructor()) {
+      setIsSupported(false);
       return;
     }
     clearTimer(productivityReminderRef);
     modeRef.current = "off";
     setIsWakeWordMode(false);
+    setPermissionIssue(false);
+    setError(null);
     stopCurrentRecognition(true);
     try {
       await requestMicrophonePermission();
       modeRef.current = "manual";
       startRecognitionInstance("manual");
     } catch (permissionError) {
+      const domException = permissionError as DOMException;
+      const denied =
+        domException.name === "NotAllowedError" ||
+        domException.name === "PermissionDeniedError" ||
+        domException.name === "SecurityError" ||
+        /permission denied|not allowed/i.test(domException.message);
+      setInterimText("");
+      setPermissionIssue(denied);
       setError(
-        permissionError instanceof Error
-          ? permissionError.message
-          : "Не удалось получить доступ к микрофону.",
+        denied
+          ? "Пожалуйста, разреши доступ к микрофону в настройках браузера (нажми на замочек в адресной строке)."
+          : permissionError instanceof Error
+            ? permissionError.message
+            : "Не удалось получить доступ к микрофону.",
       );
       setStatus("error");
     }
@@ -495,6 +556,7 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     clearTimer(productivityReminderRef);
     stopCurrentRecognition(true);
     window.speechSynthesis?.cancel();
+    playDing();
     setIsWakeWordMode(false);
     setIsListening(false);
     setInterimText("");
@@ -505,13 +567,16 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     commandHandlerRef.current = handler;
   }, []);
 
+  const clearError = useCallback(() => {
+    setError(null);
+    setPermissionIssue(false);
+    if (status === "error") setStatus("idle");
+  }, [status]);
+
   useEffect(() => {
     disposedRef.current = false;
-    const supported = !!getRecognitionConstructor() && "speechSynthesis" in window;
+    const supported = !!getRecognitionConstructor();
     setIsSupported(supported);
-    if (!supported) {
-      setError("Твой браузер не поддерживает слух Колобка. Используй кнопку микрофона.");
-    }
     return () => {
       disposedRef.current = true;
       modeRef.current = "off";
@@ -558,11 +623,14 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     isSupported,
     isWakeWordMode,
     isListening,
+    permissionIssue,
     setWakeWordMode,
     startRecognition,
     stopRecognition,
     speak,
     processCommand,
+    runCommand: executeCommand,
     setOnCommandResult,
+    clearError,
   };
 }
