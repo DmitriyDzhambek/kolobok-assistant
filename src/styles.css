@@ -268,6 +268,88 @@ body {
 	cursor: pointer;
 }
 
+.wake-word-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 11px;
+	margin-top: 17px;
+	padding: 9px 13px;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.055);
+	color: rgba(239, 233, 255, 0.76);
+	font: 600 14px "Neucha", "Segoe UI", system-ui, sans-serif;
+	cursor: pointer;
+	transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.wake-word-toggle:disabled {
+	cursor: not-allowed;
+	opacity: 0.55;
+}
+
+.wake-word-toggle.is-enabled {
+	border-color: rgba(45, 212, 191, 0.4);
+	background: rgba(45, 212, 191, 0.1);
+	color: #99f6e4;
+}
+
+.wake-word-toggle-track {
+	position: relative;
+	width: 38px;
+	height: 22px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.18);
+	transition: background 180ms ease;
+}
+
+.wake-word-toggle-track span {
+	position: absolute;
+	top: 3px;
+	left: 3px;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: white;
+	transition: transform 180ms ease;
+}
+
+.wake-word-toggle.is-enabled .wake-word-toggle-track {
+	background: #14b8a6;
+}
+
+.wake-word-toggle.is-enabled .wake-word-toggle-track span {
+	transform: translateX(16px);
+}
+
+.wake-word-hint {
+	max-width: 290px;
+	margin: 10px 0 0;
+	color: #fca5a5;
+	font-size: 13px;
+	text-align: center;
+}
+
+.wake-word-active {
+	filter: drop-shadow(0 0 17px rgba(45, 212, 191, 0.75));
+}
+
+.wake-word-active .aura {
+	opacity: 0.95;
+	filter: hue-rotate(95deg) saturate(1.35);
+	animation: wake-word-glow 2.2s ease-in-out infinite;
+}
+
+@keyframes wake-word-glow {
+	0%,
+	100% {
+		opacity: 0.55;
+	}
+	50% {
+		opacity: 1;
+	}
+}
+
 .bottom-nav {
 	position: fixed;
 	right: 0;

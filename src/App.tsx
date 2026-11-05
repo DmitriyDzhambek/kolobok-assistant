@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, Sparkles, Users, WandSparkles } from "lucide-react";
+import { Home, Mic, MicOff, Sparkles, Users } from "lucide-react";
 import { Kolobok } from "./components/Kolobok";
 import { Background } from "./components/Background";
 import { FirefliesCanvas } from "./components/FirefliesCanvas";
@@ -25,7 +25,6 @@ export default function App() {
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>("night");
   const [activeTab, setActiveTab] = useState<TabType>("main");
   const [botText, setBotText] = useState("Привет! Я Колобок. Ты отдыхай, а я для тебя заработаю!");
-  const [isListening, setIsListening] = useState(false);
   const [isTelegramMiniApp, setIsTelegramMiniApp] = useState(false);
 
   useEffect(() => {
@@ -48,15 +47,23 @@ export default function App() {
   // Голосовой ассистент
   const {
     status,
+    isListening,
     interimText,
     error,
     isSupported,
+    isWakeWordMode,
     startRecognition,
     stopRecognition,
-    speak,
-    processCommand,
-    startVoiceSession,
-  } = useVoiceAssistant({ lang: "ru-RU", continuous: false });
+    setWakeWordMode,
+    setOnCommandResult,
+  } = useVoiceAssistant({ lang: "ru-RU" });
+  const handleCommandResult = useCallback((result: { text: string }) => {
+    setBotText(result.text);
+  }, []);
+
+  useEffect(() => {
+    setOnCommandResult(handleCommandResult);
+  }, [handleCommandResult, setOnCommandResult]);
 
   // Обновляем время суток
   useEffect(() => {
@@ -72,57 +79,9 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Синхронизация статуса микрофона
   useEffect(() => {
-    setIsListening(status === "listening");
-  }, [status]);
-
-  // Обработка результата распознавания
-  useEffect(() => {
-    if (status === "processing" && interimText === "") {
-      const recognition = (window as any).speechRecognitionResult;
-      if (recognition) {
-        let finalText = "";
-        for (let i = 0; i < recognition.results.length; i++) {
-          if (recognition.results[i].isFinal) {
-            finalText += recognition.results[i][0].transcript;
-          }
-        }
-        if (finalText) {
-          handleVoiceInput(finalText);
-        }
-      }
-    }
-  }, [status, interimText]);
-
-  // Обработка голосового ввода
-  const handleVoiceInput = useCallback(async (text: string) => {
-    const result = processCommand(text);
-    setBotText(result.text);
-    
-    // Озвучиваем ответ
-    try {
-      await speak(result.text);
-    } catch (err) {
-      console.error("Ошибка озвучки:", err);
-    }
-    
-    // Дополнительные действия в зависимости от команды
-    if (result.action === "focus") {
-      // Можно добавить логику для добавления задачи
-    }
-  }, [processCommand, speak]);
-
-  // Ручная обработка текста (для тестирования)
-  const handleTestInput = useCallback(async (text: string) => {
-    const result = processCommand(text);
-    setBotText(result.text);
-    try {
-      await speak(result.text);
-    } catch (err) {
-      console.error("Ошибка озвучки:", err);
-    }
-  }, [processCommand, speak]);
+    setOnCommandResult((result) => setBotText(result.text));
+  }, [setOnCommandResult]);
 
   // Обработка клика по микрофону
   const handleMicClick = useCallback(() => {
@@ -133,11 +92,14 @@ export default function App() {
     }
   }, [isListening, startRecognition, stopRecognition]);
 
+  const handleWakeWordToggle = () => {
+    void setWakeWordMode(!isWakeWordMode);
+  };
+
   // Переключение вкладок
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
-    // Останавливаем прослушивание при смене вкладки
-    if (isListening) {
+    if (isListening || isWakeWordMode) {
       stopRecognition();
     }
   };
@@ -183,7 +145,11 @@ export default function App() {
 
               {/* Колобок по центру */}
               <div className="home-content">
-                <Kolobok state={isListening ? "listen" : "idle"} timeOfDay={timeOfDay} />
+                <Kolobok
+                  state={isListening ? "listen" : "idle"}
+                  timeOfDay={timeOfDay}
+                  wakeWordActive={isWakeWordMode}
+                />
 
                 {/* Облачко с текстом */}
                 <motion.div
@@ -215,16 +181,39 @@ export default function App() {
                     onClick={handleMicClick}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    disabled={!isSupported}
                   >
-                    <WandSparkles className="w-8 h-8 text-white" />
+                    {isListening ? (
+                      <MicOff className="w-7 h-7 text-white" />
+                    ) : (
+                      <Mic className="w-7 h-7 text-white" />
+                    )}
                     {!isSupported && (
-                      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs text-red-400 whitespace-nowrap">
-                        Не поддерживается
-                      </div>
+                      <span className="sr-only">
+                        Твой браузер не поддерживает слух Колобка. Используй кнопку микрофона.
+                      </span>
                     )}
                   </motion.button>
                 </motion.div>
+                <button
+                  type="button"
+                  className={`wake-word-toggle${isWakeWordMode ? " is-enabled" : ""}`}
+                  role="switch"
+                  aria-checked={isWakeWordMode}
+                  onClick={handleWakeWordToggle}
+                  disabled={!isSupported}
+                >
+                  <span className="wake-word-toggle-track" aria-hidden="true">
+                    <span />
+                  </span>
+                  <span>
+                    Режим: {isWakeWordMode ? "Слушаю" : "выключен"}
+                  </span>
+                </button>
+                {!isSupported && (
+                  <p className="wake-word-hint" role="status">
+                    Твой браузер не поддерживает слух Колобка. Используй кнопку микрофона.
+                  </p>
+                )}
               </div>
             </motion.main>
           )}

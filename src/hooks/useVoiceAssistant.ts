@@ -1,326 +1,568 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-/**
- * Типы для статуса голосового ассистента
- */
-export type VoiceStatus = "idle" | "listening" | "processing" | "speaking" | "error";
+export type VoiceStatus =
+  | "idle"
+  | "listening"
+  | "processing"
+  | "speaking"
+  | "error";
+export type VoiceAction = "greeting" | "weather" | "focus" | "timer" | "unknown";
 
-/**
- * Типы для действий после распознавания
- */
-export type VoiceAction = "greeting" | "weather" | "focus" | "unknown";
-
-/**
- * Результат обработки команды
- */
 export interface VoiceResult {
   text: string;
   action: VoiceAction;
-  payload?: any;
 }
 
-/**
- * Параметры конфигурации
- */
 export interface VoiceConfig {
   lang?: string;
-  continuous?: boolean;
-  interimResults?: boolean;
 }
 
-type SpeechRecognitionEventLike = {
-  resultIndex: number;
-  results: ArrayLike<{
-    isFinal: boolean;
-    0: { transcript: string };
-  }>;
+type RecognitionResult = {
+  isFinal: boolean;
+  0: { transcript: string };
 };
 
-type SpeechRecognitionLike = {
+type RecognitionEvent = {
+  resultIndex: number;
+  results: ArrayLike<RecognitionResult>;
+};
+
+type RecognitionLike = {
   lang: string;
   continuous: boolean;
   interimResults: boolean;
-  results: ArrayLike<{
-    isFinal: boolean;
-    0: { transcript: string };
-  }>;
   onstart: (() => void) | null;
   onend: (() => void) | null;
   onerror: ((event: { error?: string }) => void) | null;
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onresult: ((event: RecognitionEvent) => void) | null;
   start: () => void;
   stop: () => void;
+  abort?: () => void;
 };
 
-type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
-type WindowWithSpeechRecognition = Window & {
-  SpeechRecognition?: SpeechRecognitionConstructor;
-  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+type RecognitionConstructor = new () => RecognitionLike;
+type SpeechWindow = Window & {
+  SpeechRecognition?: RecognitionConstructor;
+  webkitSpeechRecognition?: RecognitionConstructor;
 };
+type ListenMode = "off" | "manual" | "wake" | "command";
 
-function getSpeechRecognitionConstructor(): SpeechRecognitionConstructor | undefined {
-  const speechWindow = window as WindowWithSpeechRecognition;
+function getRecognitionConstructor(): RecognitionConstructor | undefined {
+  const speechWindow = window as SpeechWindow;
   return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
 }
 
-/**
- * Кастомный хук для работы с голосовым ассистентом
- * Использует Web Speech API (STT/TTS)
- */
+function getWakeWordCommand(text: string): string | null {
+  const normalized = text.toLocaleLowerCase("ru-RU").replace(/ё/g, "е");
+  const wakeWord = /(?<![а-яё])(?:привет\s+)?колобок(?![а-яё])/;
+  const match = wakeWord.exec(normalized);
+  if (!match) return null;
+  return text.slice(match.index + match[0].length).trim().replace(/^[,!.:\s]+/, "");
+}
+
+function parseDuration(text: string): number | null {
+  const match = text.toLocaleLowerCase("ru-RU").match(
+    /(\d{1,3})\s*(секунд[уы]?|сек|минут[уы]?|мин|час(?:а|ов)?)(?![а-яё])/,
+  );
+  if (!match) return null;
+  const value = Number(match[1]);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const unit = match[2];
+  const multiplier = unit.startsWith("сек")
+    ? 1000
+    : unit.startsWith("час")
+      ? 60 * 60 * 1000
+      : 60 * 1000;
+  return value * multiplier;
+}
+
 export function useVoiceAssistant(config: VoiceConfig = {}) {
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [interimText, setInterimText] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isSupported, setIsSupported] = useState<boolean>(true);
+  const [isSupported, setIsSupported] = useState(false);
+  const [isWakeWordMode, setIsWakeWordMode] = useState(false);
+  const [isListening, setIsListening] = useState(false);
 
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
-  const synthesisRef = useRef<typeof window.speechSynthesis>(null);
+  const recognitionRef = useRef<RecognitionLike | null>(null);
+  const modeRef = useRef<ListenMode>("off");
+  const restartTimerRef = useRef<number | null>(null);
+  const commandTimerRef = useRef<number | null>(null);
+  const productivityReminderRef = useRef<number | null>(null);
+  const workTimerRef = useRef<number | null>(null);
+  const commandHandlerRef = useRef<(result: VoiceResult) => void>(() => {});
+  const restartWakeListeningRef = useRef<() => void>(() => {});
+  const scheduleReminderRef = useRef<() => void>(() => {});
+  const activeCommandRef = useRef(false);
+  const disposedRef = useRef(false);
+  const wakeRequestIdRef = useRef(0);
 
-  // Проверяем поддержку API
-  useEffect(() => {
-    const SpeechRecognitionAPI = getSpeechRecognitionConstructor();
-    setIsSupported(!!SpeechRecognitionAPI && !!window.speechSynthesis);
+  const clearTimer = (timerRef: React.MutableRefObject<number | null>) => {
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const stopCurrentRecognition = useCallback((abort = false) => {
+    const recognition = recognitionRef.current;
+    recognitionRef.current = null;
+    if (!recognition) return;
+    recognition.onend = null;
+    if (abort && recognition.abort) recognition.abort();
+    else recognition.stop();
   }, []);
 
-  // Остановка распознавания
-  const stopRecognition = useCallback(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
+  const speak = useCallback((text: string, rate = 1, pitch = 1) => {
+    if (!("speechSynthesis" in window)) {
+      return Promise.reject(new Error("Синтез речи не поддерживается"));
     }
-    setStatus("idle");
-    setInterimText("");
-    setError(null);
-  }, []);
-
-  // Запуск распознавания
-  const startRecognition = useCallback(() => {
-    if (!isSupported) {
-      setError("Голосовой ввод не поддерживается в этом браузере");
-      setStatus("error");
-      return;
-    }
-
-    stopRecognition();
-
-    const SpeechRecognitionAPI = getSpeechRecognitionConstructor();
-    if (!SpeechRecognitionAPI) {
-      setIsSupported(false);
-      setError("Голосовой ввод не поддерживается в этом браузере");
-      setStatus("error");
-      return;
-    }
-    const recognition = new SpeechRecognitionAPI();
-
-    recognition.lang = config.lang || "ru-RU";
-    recognition.continuous = config.continuous !== undefined ? config.continuous : false;
-    recognition.interimResults = config.interimResults !== undefined ? config.interimResults : true;
-
-    recognition.onstart = () => setStatus("listening");
-    recognition.onend = () => {
-      if (status !== "error") setStatus("idle");
-    };
-    recognition.onerror = (event) => {
-      setError(event.error || "Ошибка распознавания");
-      setStatus("error");
-      stopRecognition();
-    };
-
-    recognition.onresult = (event) => {
-      let finalTranscript = "";
-      let interimTranscript = "";
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript;
-        } else {
-          interimTranscript += transcript;
-        }
-      }
-
-      if (finalTranscript) {
-        setInterimText("");
-        setStatus("processing");
-      } else {
-        setInterimText(interimTranscript);
-      }
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
-    setError(null);
-  }, [isSupported, config, status]);
-
-  // Озвучка текста
-  const speak = useCallback((text: string, rate: number = 1, pitch: number = 1) => {
-    if (!window.speechSynthesis) {
-      setError("Синтез речи не поддерживается");
-      setStatus("error");
-      return Promise.reject("Синтез речи не поддерживается");
-    }
-
     return new Promise<void>((resolve, reject) => {
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "ru-RU";
+      utterance.lang = config.lang ?? "ru-RU";
       utterance.rate = rate;
       utterance.pitch = pitch;
-
-      // Попробуем найти русский голос
-      const voices = window.speechSynthesis.getVoices();
-      const russianVoice = voices.find((v) => 
-        v.lang.startsWith("ru") && v.name.toLowerCase().includes("male")
-      ) || voices.find((v) => v.lang.startsWith("ru"));
-      if (russianVoice) {
-        utterance.voice = russianVoice;
-      }
-
+      const russianVoice = window.speechSynthesis
+        .getVoices()
+        .find((voice) => voice.lang.toLowerCase().startsWith("ru"));
+      if (russianVoice) utterance.voice = russianVoice;
       utterance.onstart = () => setStatus("speaking");
       utterance.onend = () => {
         setStatus("idle");
         resolve();
       };
-      utterance.onerror = (event) => {
+      utterance.onerror = () => {
         setStatus("idle");
-        reject(new Error("Ошибка синтеза речи"));
+        reject(new Error("Не удалось озвучить ответ"));
       };
-
-      // Останавливаем все текущие озвучки
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(utterance);
     });
-  }, []);
+  }, [config.lang]);
 
-  // Обработка команды (Intent Recognition)
   const processCommand = useCallback((text: string): VoiceResult => {
-    const lowerText = text.toLowerCase();
-
-    // Приветствие
-    if (/привет|здарова|др|хелло|hi|hello/i.test(lowerText)) {
+    const normalized = text.toLocaleLowerCase("ru-RU");
+    const duration = parseDuration(normalized);
+    if (duration !== null) {
+      const timerDescription = duration >= 60_000
+        ? `${Math.round(duration / 60_000)} минут`
+        : `${Math.round(duration / 1000)} секунд`;
       return {
-        text: "Привет! Погода отличная, готов покорять мир?",
+        text: `Таймер на ${timerDescription}. Я напомню, когда время выйдет.`,
+        action: "timer",
+      };
+    }
+    if (/привет|здарова|как дела|как ты|что нового/i.test(normalized)) {
+      return {
+        text: "У меня всё отлично! Кстати, в Money Bux появляются новые задания. Может, заработаем?",
         action: "greeting",
       };
     }
-
-    // Погода
-    if (/погода|на улице|дождь|снег|солнце|облачно/i.test(lowerText)) {
+    if (/погода|на улице|дождь|снег|солнце|облачно/i.test(normalized)) {
       return {
-        text: "За окном отличная погода. Идеально для того, чтобы выполнить твою привычку 'Прогулка'.",
+        text: "Я услышал вопрос о погоде. Открой раздел погоды, чтобы посмотреть прогноз.",
         action: "weather",
       };
     }
-
-    // Фокус/задачи
-    if (/фокус|концентрируйся|учись|учи|английский|хобби|привычка/i.test(lowerText)) {
+    if (/фокус|концентрируйся|учись|учи|английский|хобби|привычк/i.test(normalized)) {
       return {
-        text: "Отлично! Я отметил это в твоем списке. Давай начнем с 25 минут концентрации!",
+        text: "Отлично! Давай сосредоточимся на этом деле. Я рядом и помогу держать фокус.",
         action: "focus",
-        payload: { task: "Английский" },
       };
     }
-
-    // Как дела
-    if (/как дела|как ты|как Lebens|что нового/i.test(lowerText)) {
-      return {
-        text: "У меня всё отлично! Готов помочь тебе заработать и стать лучше. Что будем делать?",
-        action: "greeting",
-      };
-    }
-
-    // Помоги/что ты умеешь
-    if (/помоги|что ты умеешь|что ты можешь|команды/i.test(lowerText)) {
-      return {
-        text: "Я умею: проверять погоду, ставить таймеры, добавлять задачи,開く заработок. Спроси что-нибудь!",
-        action: "greeting",
-      };
-    }
-
-    // Fallback
     return {
-      text: "Я пока не умею отвечать на сложные вопросы, но я помогу тебе стать лучше на 1% сегодня. Давай поставим таймер на учебу?",
+      text: "Я услышал тебя, но пока не понял команду. Попробуй сказать: «поставь таймер на 10 минут».",
       action: "unknown",
     };
   }, []);
 
-  // Полный цикл: распознавание + обработка + озвучка
-  const startVoiceSession = useCallback(async () => {
-    if (!isSupported) {
-      setError("Голосовой ввод не поддерживается");
-      setStatus("error");
-      return null;
-    }
-
-    startRecognition();
-
-    return new Promise<VoiceResult | null>((resolve) => {
-      const checkResult = () => {
-        if (status === "processing" && interimText === "") {
-          // Finnish, process the final text
-          const recognition = recognitionRef.current;
-          if (recognition) {
-            let finalText = "";
-            for (let i = 0; i < recognition.results.length; i++) {
-              if (recognition.results[i].isFinal) {
-                finalText += recognition.results[i][0].transcript;
-              }
-            }
-            if (finalText) {
-              stopRecognition();
-              const result = processCommand(finalText);
-              resolve(result);
-            }
+  const executeCommand = useCallback(async (text: string) => {
+    const result = processCommand(text);
+    commandHandlerRef.current(result);
+    if (result.action === "timer") {
+      const duration = parseDuration(text);
+      if (duration !== null) {
+        clearTimer(workTimerRef);
+        workTimerRef.current = window.setTimeout(() => {
+          workTimerRef.current = null;
+          if (!disposedRef.current && document.visibilityState === "visible") {
+            stopCurrentRecognition(true);
+            void speak("Время вышло! Ты молодец. Сделай небольшой перерыв.")
+              .catch((speakError: unknown) =>
+                console.error("Не удалось озвучить окончание таймера:", speakError),
+              )
+              .finally(() => {
+                if (modeRef.current === "wake") restartWakeListeningRef.current();
+              });
           }
-        } else if (status === "idle" && interimText !== "") {
-          // Only interim results
-          stopRecognition();
-          resolve(null);
-        } else if (status === "error") {
-          stopRecognition();
-          resolve(null);
-        } else {
-          setTimeout(checkResult, 100);
-        }
-      };
-      checkResult();
-    });
-  }, [isSupported, startRecognition, stopRecognition, status, interimText, processCommand]);
-
-  // Автоматическая обработка при изменении interimText (для continuous mode)
-  useEffect(() => {
-    if (status === "processing" && interimText === "") {
-      const recognition = recognitionRef.current;
-      if (recognition) {
-        let finalText = "";
-        for (let i = 0; i < recognition.results.length; i++) {
-          if (recognition.results[i].isFinal) {
-            finalText += recognition.results[i][0].transcript;
-          }
-        }
-        if (finalText) {
-          stopRecognition();
-        }
+        }, duration);
       }
     }
-  }, [interimText, status, stopRecognition]);
+    try {
+      await speak(result.text);
+    } catch (speakError) {
+      console.error("Не удалось озвучить ответ:", speakError);
+    }
+  }, [processCommand, speak, stopCurrentRecognition]);
+
+  const startRecognitionInstance = useCallback((requestedMode: "wake" | "command" | "manual") => {
+    if (disposedRef.current || document.visibilityState !== "visible") return;
+    const RecognitionAPI = getRecognitionConstructor();
+    if (!RecognitionAPI) {
+      modeRef.current = "off";
+      setIsWakeWordMode(false);
+      setIsListening(false);
+      setIsSupported(false);
+      setStatus("error");
+      setError("Твой браузер не поддерживает слух Колобка. Используй кнопку микрофона.");
+      return;
+    }
+
+    stopCurrentRecognition(true);
+    const recognition = new RecognitionAPI();
+    recognition.lang = config.lang ?? "ru-RU";
+    recognition.continuous = requestedMode === "wake";
+    recognition.interimResults = true;
+    modeRef.current = requestedMode;
+    recognitionRef.current = recognition;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setStatus("listening");
+      setError(null);
+    };
+    recognition.onresult = (event) => {
+      let finalText = "";
+      let interim = "";
+      for (let index = 0; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        if (result.isFinal) finalText += result[0].transcript;
+        else interim += result[0].transcript;
+      }
+      setInterimText(interim);
+
+      const currentMode = modeRef.current;
+      if (currentMode === "wake" && (interim || finalText)) {
+        scheduleReminderRef.current();
+      }
+      if (currentMode === "wake") {
+        const partial = finalText || interim;
+        const command = getWakeWordCommand(partial);
+        if (command !== null && !activeCommandRef.current) {
+          if (!finalText.trim()) return;
+          activeCommandRef.current = true;
+          clearTimer(restartTimerRef);
+          modeRef.current = "command";
+          setStatus("processing");
+          stopCurrentRecognition();
+          void (async () => {
+            try {
+              const audioContext = new AudioContext();
+              const oscillator = audioContext.createOscillator();
+              const gain = audioContext.createGain();
+              oscillator.frequency.value = 880;
+              gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+              gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.12);
+              oscillator.connect(gain);
+              gain.connect(audioContext.destination);
+              oscillator.start();
+              oscillator.stop(audioContext.currentTime + 0.12);
+              oscillator.onended = () => void audioContext.close();
+            } catch (audioError) {
+              console.warn("Звуковой сигнал недоступен:", audioError);
+            }
+            try {
+              await speak("Да, я здесь. Слушаю тебя.");
+            } catch (speakError) {
+              console.error("Не удалось озвучить приветствие:", speakError);
+            }
+            if (modeRef.current !== "command" || document.visibilityState !== "visible") {
+              activeCommandRef.current = false;
+              modeRef.current = modeRef.current === "command" ? "wake" : modeRef.current;
+              return;
+            }
+            if (command && finalText.trim()) {
+              clearTimer(commandTimerRef);
+              await executeCommand(command);
+              activeCommandRef.current = false;
+              modeRef.current = "wake";
+              startRecognitionInstance("wake");
+            } else {
+              clearTimer(commandTimerRef);
+              commandTimerRef.current = window.setTimeout(() => {
+                commandTimerRef.current = null;
+                if (modeRef.current === "command") {
+                  activeCommandRef.current = false;
+                  modeRef.current = "wake";
+                  stopCurrentRecognition(true);
+                  startRecognitionInstance("wake");
+                }
+              }, 7000);
+              startRecognitionInstance("command");
+            }
+          })();
+        }
+        return;
+      }
+
+      if (currentMode === "command" && finalText.trim()) {
+        clearTimer(commandTimerRef);
+        activeCommandRef.current = false;
+        modeRef.current = "wake";
+        setInterimText("");
+        setStatus("processing");
+        stopCurrentRecognition();
+        void executeCommand(finalText.trim()).finally(() => {
+          if (modeRef.current === "wake" && document.visibilityState === "visible") {
+            startRecognitionInstance("wake");
+          }
+        });
+        return;
+      }
+
+      if (currentMode === "manual" && finalText.trim()) {
+        modeRef.current = "off";
+        setInterimText("");
+        setStatus("processing");
+        setIsListening(false);
+        stopCurrentRecognition();
+        void executeCommand(finalText.trim());
+      }
+    };
+    recognition.onerror = (event) => {
+      setIsListening(false);
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        modeRef.current = "off";
+        setIsWakeWordMode(false);
+        setStatus("error");
+        setError("Разреши доступ к микрофону в настройках браузера.");
+      } else if (event.error === "network" || event.error === "audio-capture") {
+        modeRef.current = "off";
+        setIsWakeWordMode(false);
+        setStatus("error");
+        setError(
+          event.error === "audio-capture"
+            ? "Микрофон недоступен. Проверь подключение устройства."
+            : "Распознавание речи недоступно. Проверь подключение к интернету.",
+        );
+      } else if (event.error !== "no-speech" && event.error !== "aborted") {
+        modeRef.current = "off";
+        setIsWakeWordMode(false);
+        setStatus("error");
+        setError("Проблема с распознаванием речи. Проверь подключение и микрофон.");
+      }
+    };
+    recognition.onend = () => {
+      if (recognitionRef.current === recognition) recognitionRef.current = null;
+      setIsListening(false);
+      if (modeRef.current === "command") {
+        clearTimer(commandTimerRef);
+        activeCommandRef.current = false;
+        modeRef.current = "wake";
+      }
+      if (modeRef.current === "wake" && document.visibilityState === "visible") {
+        clearTimer(restartTimerRef);
+        restartTimerRef.current = window.setTimeout(() => {
+          restartTimerRef.current = null;
+          if (modeRef.current === "wake" && document.visibilityState === "visible") {
+            startRecognitionInstance("wake");
+          }
+        }, 300);
+      } else if (modeRef.current === "manual") {
+        modeRef.current = "off";
+        setStatus("idle");
+      }
+    };
+
+    try {
+      recognition.start();
+    } catch (startError) {
+      setIsListening(false);
+      if (modeRef.current === "wake") {
+        clearTimer(restartTimerRef);
+        restartTimerRef.current = window.setTimeout(
+          () => startRecognitionInstance("wake"),
+          1000,
+        );
+      } else {
+        modeRef.current = "off";
+        setStatus("error");
+        setError("Не удалось запустить микрофон. Попробуй ещё раз.");
+        console.error("Не удалось запустить распознавание:", startError);
+      }
+    }
+  }, [config.lang, executeCommand, speak, stopCurrentRecognition]);
+  restartWakeListeningRef.current = () => startRecognitionInstance("wake");
+
+  const scheduleProductivityReminder = useCallback(() => {
+    clearTimer(productivityReminderRef);
+    if (modeRef.current !== "wake" || document.visibilityState !== "visible") return;
+    productivityReminderRef.current = window.setTimeout(() => {
+      productivityReminderRef.current = null;
+      if (modeRef.current !== "wake" || document.visibilityState !== "visible") return;
+      stopCurrentRecognition(true);
+      setIsListening(false);
+      void speak("Эй, ты тут? Я скучаю. Давай поставим таймер на учёбу.")
+        .catch((speakError: unknown) =>
+          console.error("Не удалось озвучить напоминание:", speakError),
+        )
+        .finally(() => {
+          if (modeRef.current === "wake") startRecognitionInstance("wake");
+        });
+    }, 10 * 60 * 1000);
+  }, [speak, startRecognitionInstance, stopCurrentRecognition]);
+  scheduleReminderRef.current = scheduleProductivityReminder;
+
+  const requestMicrophonePermission = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("Браузер не предоставляет доступ к микрофону.");
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((track) => track.stop());
+  }, []);
+
+  const setWakeWordMode = useCallback(async (enabled: boolean) => {
+    const requestId = ++wakeRequestIdRef.current;
+    clearTimer(restartTimerRef);
+    clearTimer(commandTimerRef);
+    modeRef.current = "off";
+    activeCommandRef.current = false;
+    stopCurrentRecognition(true);
+    setInterimText("");
+    setError(null);
+    if (!enabled) {
+      clearTimer(productivityReminderRef);
+      setIsWakeWordMode(false);
+      setIsListening(false);
+      setStatus("idle");
+      return;
+    }
+    if (!isSupported) {
+      setError("Твой браузер не поддерживает слух Колобка. Используй кнопку микрофона.");
+      return;
+    }
+    try {
+      await requestMicrophonePermission();
+      if (requestId !== wakeRequestIdRef.current || disposedRef.current) return;
+      modeRef.current = "wake";
+      setIsWakeWordMode(true);
+      startRecognitionInstance("wake");
+      scheduleProductivityReminder();
+    } catch (permissionError) {
+      if (requestId !== wakeRequestIdRef.current || disposedRef.current) return;
+      modeRef.current = "off";
+      setIsWakeWordMode(false);
+      setError(
+        permissionError instanceof Error
+          ? permissionError.message
+          : "Не удалось получить доступ к микрофону.",
+      );
+      setStatus("error");
+    }
+  }, [isSupported, requestMicrophonePermission, scheduleProductivityReminder, startRecognitionInstance, stopCurrentRecognition]);
+
+  const startRecognition = useCallback(async () => {
+    wakeRequestIdRef.current += 1;
+    if (!isSupported) {
+      setError("Твой браузер не поддерживает слух Колобка. Используй кнопку микрофона.");
+      setStatus("error");
+      return;
+    }
+    clearTimer(productivityReminderRef);
+    modeRef.current = "off";
+    setIsWakeWordMode(false);
+    stopCurrentRecognition(true);
+    try {
+      await requestMicrophonePermission();
+      modeRef.current = "manual";
+      startRecognitionInstance("manual");
+    } catch (permissionError) {
+      setError(
+        permissionError instanceof Error
+          ? permissionError.message
+          : "Не удалось получить доступ к микрофону.",
+      );
+      setStatus("error");
+    }
+  }, [isSupported, requestMicrophonePermission, startRecognitionInstance, stopCurrentRecognition]);
+
+  const stopRecognition = useCallback(() => {
+    wakeRequestIdRef.current += 1;
+    modeRef.current = "off";
+    activeCommandRef.current = false;
+    clearTimer(restartTimerRef);
+    clearTimer(commandTimerRef);
+    clearTimer(productivityReminderRef);
+    stopCurrentRecognition(true);
+    window.speechSynthesis?.cancel();
+    setIsWakeWordMode(false);
+    setIsListening(false);
+    setInterimText("");
+    setStatus("idle");
+  }, [stopCurrentRecognition]);
+
+  const setOnCommandResult = useCallback((handler: (result: VoiceResult) => void) => {
+    commandHandlerRef.current = handler;
+  }, []);
+
+  useEffect(() => {
+    disposedRef.current = false;
+    const supported = !!getRecognitionConstructor() && "speechSynthesis" in window;
+    setIsSupported(supported);
+    if (!supported) {
+      setError("Твой браузер не поддерживает слух Колобка. Используй кнопку микрофона.");
+    }
+    return () => {
+      disposedRef.current = true;
+      modeRef.current = "off";
+      clearTimer(restartTimerRef);
+      clearTimer(commandTimerRef);
+      clearTimer(productivityReminderRef);
+      clearTimer(workTimerRef);
+      stopCurrentRecognition(true);
+      window.speechSynthesis?.cancel();
+    };
+  }, [stopCurrentRecognition]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        clearTimer(restartTimerRef);
+        clearTimer(commandTimerRef);
+        clearTimer(productivityReminderRef);
+        if (modeRef.current === "command") {
+          activeCommandRef.current = false;
+          modeRef.current = "wake";
+        }
+        stopCurrentRecognition(true);
+        setIsListening(false);
+        return;
+      }
+      if (modeRef.current === "wake") {
+        scheduleProductivityReminder();
+        clearTimer(restartTimerRef);
+        restartTimerRef.current = window.setTimeout(() => {
+          restartTimerRef.current = null;
+          if (modeRef.current === "wake") startRecognitionInstance("wake");
+        }, 300);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [scheduleProductivityReminder, startRecognitionInstance, stopCurrentRecognition]);
 
   return {
-    // Состояние
     status,
     interimText,
     error,
     isSupported,
-    
-    // Методы
+    isWakeWordMode,
+    isListening,
+    setWakeWordMode,
     startRecognition,
     stopRecognition,
     speak,
     processCommand,
-    startVoiceSession,
-    
-    // Утилиты
-    isListening: status === "listening",
-    isSpeaking: status === "speaking",
-    hasError: status === "error",
+    setOnCommandResult,
   };
 }

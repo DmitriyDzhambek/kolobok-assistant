@@ -5,6 +5,7 @@ type Props = {
 	state: "idle" | "listen" | "think" | "speak";
 	portfolioStatus?: "profit" | "loss" | "neutral";
 	timeOfDay?: TimeOfDay;
+	wakeWordActive?: boolean;
 };
 
 /**
@@ -18,7 +19,12 @@ type Props = {
  * timeOfDay меняет оттенок ауры: утро — розовый, день — тёплый,
  * вечер — фиолетовый, ночь — лунный.
  */
-export function Kolobok({ state, portfolioStatus = "neutral", timeOfDay = "night" }: Props) {
+export function Kolobok({
+	state,
+	portfolioStatus = "neutral",
+	timeOfDay = "night",
+	wakeWordActive = false,
+}: Props) {
 	const auraColor =
 		portfolioStatus === "profit"
 			? "#ffd766"
@@ -36,7 +42,7 @@ export function Kolobok({ state, portfolioStatus = "neutral", timeOfDay = "night
 
 	return (
 		<motion.div
-			className={`kolobok-wrap state-${state} mood-${portfolioStatus} tod-${timeOfDay}`}
+			className={`kolobok-wrap state-${state} mood-${portfolioStatus} tod-${timeOfDay}${wakeWordActive ? " wake-word-active" : ""}`}
 			animate={
 				portfolioStatus === "profit"
 					? { y: [0, -6, 0], scale: [1, 1.03, 1] }
