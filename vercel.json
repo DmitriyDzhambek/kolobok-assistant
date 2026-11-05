@@ -19,7 +19,8 @@
 		}
 	],
 	"rewrites": [
-		{ "source": "/api/(?!notify$)(.*)", "destination": "/api/index.py" },
+		{ "source": "/api/notify", "destination": "/api/notify.ts" },
+		{ "source": "/api/(.*)", "destination": "/api/index.py" },
 		{ "source": "/ws", "destination": "/api/index.py" },
 		{ "source": "/(.*)", "destination": "/index.html" }
 	]
