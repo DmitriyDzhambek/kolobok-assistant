@@ -3,20 +3,15 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { BookOpen, Check, Headphones, X } from "lucide-react";
 import { tgWebApp } from "../tma";
+import { vocabularyData } from "../data/vocabulary";
 
-type Word = {
-  word: string;
-  transcription: string;
-  translation: string;
-};
-
-const WORDS: Word[] = [
-  { word: "Focus", transcription: "/ˈfoʊkəs/", translation: "сосредоточенность" },
-  { word: "Habit", transcription: "/ˈhæbɪt/", translation: "привычка" },
-  { word: "Earn", transcription: "/ɜːrn/", translation: "зарабатывать" },
-  { word: "Goal", transcription: "/ɡoʊl/", translation: "цель" },
-  { word: "Progress", transcription: "/ˈprɑːɡres/", translation: "прогресс" },
-];
+function getRandomWordIndex(excludeIndex?: number): number {
+  if (vocabularyData.length <= 1) return 0;
+  const availableIndices = vocabularyData
+    .map((_, index) => index)
+    .filter((index) => index !== excludeIndex);
+  return availableIndices[Math.floor(Math.random() * availableIndices.length)];
+}
 
 type EnglishModalProps = {
   isOpen: boolean;
@@ -38,7 +33,7 @@ export function EnglishModal({
   onLearned,
 }: EnglishModalProps) {
   const [wordIndex, setWordIndex] = useState(
-    () => Math.floor(Math.random() * WORDS.length),
+    () => getRandomWordIndex(),
   );
   const [speechError, setSpeechError] = useState("");
 
@@ -58,7 +53,7 @@ export function EnglishModal({
   }, [isOpen, onClose]);
 
   if (!isOpen || typeof document === "undefined") return null;
-  const word = WORDS[wordIndex];
+  const word = vocabularyData[wordIndex];
 
   const speakWord = () => {
     if (!("speechSynthesis" in window)) {
@@ -75,7 +70,7 @@ export function EnglishModal({
 
   const learnWord = () => {
     onLearned();
-    setWordIndex((current) => (current + 1) % WORDS.length);
+    setWordIndex((current) => getRandomWordIndex(current));
     onClose();
   };
 
