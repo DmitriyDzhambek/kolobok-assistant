@@ -244,6 +244,35 @@
   gap: 12px;
 }
 
+.smart-home-scanner {
+  margin: 0 0 16px;
+  padding: 11px;
+  border: 1px solid rgba(94, 234, 212, 0.16);
+  border-radius: 14px;
+  background: rgba(45, 212, 191, 0.045);
+}
+
+.smart-home-scanner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.smart-home-scanner-actions .smart-home-copy-id {
+  margin-top: 0;
+}
+
+.smart-home-camera {
+  display: block;
+  width: min(100%, 360px);
+  max-height: 270px;
+  margin: 12px auto 0;
+  border: 1px solid rgba(94, 234, 212, 0.35);
+  border-radius: 12px;
+  background: #080b14;
+  object-fit: cover;
+}
+
 .smart-home-field {
   display: grid;
   gap: 6px;

@@ -32,6 +32,28 @@ export const EARNING_PROJECTS: EarningProject[] = [
     quickTaskMinutes: 10,
     quickTaskDescription: "выполнить короткое задание или опрос",
   },
+  {
+    id: "grambux",
+    title: "Gram Bux",
+    description:
+      "Подписывайся на канал и получай 0.10 звезды за подписку. Запускай ботов и приложения — за запуск начисляют 0.20 звезды.",
+    reward: "0.10 звезды за подписку",
+    tags: ["Звёзды", "Telegram", "Боты"],
+    url: "https://t.me/GramBux_bot?start=ref1053702516",
+    quickTaskMinutes: 5,
+    quickTaskDescription: "подписаться на канал или запустить приложение",
+  },
+  {
+    id: "paidz",
+    title: "PaidZ",
+    description:
+      "Смотри от 50 реклам в день и откладывай на свою хотелку. Минимальный вывод — от 0.50 USDT.",
+    reward: "От 0.50 USDT к выводу",
+    tags: ["USDT", "Реклама", "Telegram"],
+    url: "https://t.me/paidzapp/start?startapp=ref_75adf416",
+    quickTaskMinutes: 10,
+    quickTaskDescription: "посмотреть рекламу и пополнить накопления",
+  },
 ];
 
 export function findQuickEarningProject(

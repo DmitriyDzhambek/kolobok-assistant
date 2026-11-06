@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, DollarSign, Gamepad2, Gem, Sparkles, Timer } from "lucide-react";
+import { ArrowUpRight, DollarSign, Gamepad2, Gem, Sparkles, Star, Timer } from "lucide-react";
 import { AutoPilotModal } from "./AutoPilotModal";
 import { CryptoSurvival } from "./CryptoSurvival";
 import { EARNING_PROJECTS, type EarningProject } from "../data/earningProjects";
@@ -15,7 +15,9 @@ type MagicIncomeProps = {
 };
 
 function projectIcon(project: EarningProject) {
-  return project.id === "moneybux" ? Gem : DollarSign;
+  if (project.id === "moneybux") return Gem;
+  if (project.id === "grambux") return Star;
+  return DollarSign;
 }
 
 export function MagicIncome({
