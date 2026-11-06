@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Camera, Copy, RotateCcw, Save, X } from "lucide-react";
+import { AlertCircle, Camera, CheckCircle2, Copy, RotateCcw, Save, X } from "lucide-react";
 import { DEFAULT_DEVICE_CONFIG, type DeviceConfig } from "../hooks/useDeviceConfig";
 import "./SmartHomeWidget.css";
 
@@ -13,7 +13,16 @@ const qrFieldNames: Record<keyof DeviceConfig, string[]> = {
   swVersion: ["swVersion", "sw_version", "version", "firmwareVersion"],
 };
 
-function getDeviceConfigFromQr(payload: string): Partial<DeviceConfig> | null {
+type QrProvider = "tuya" | "matter" | "other";
+type QrDeviceType = "vacuum" | "television" | "other";
+
+type QrScanResult = {
+  provider: QrProvider;
+  deviceType: QrDeviceType;
+  config: Partial<DeviceConfig>;
+};
+
+function getDeviceConfigFromQr(payload: string): QrScanResult {
   const parsedFields: Partial<DeviceConfig> = {};
   const assignKnownFields = (source: Record<string, unknown>) => {
     const normalizedSource = Object.fromEntries(
@@ -31,6 +40,10 @@ function getDeviceConfigFromQr(payload: string): Partial<DeviceConfig> | null {
       }
     }
   };
+
+  if (/^MT:/i.test(payload.trim())) {
+    return { provider: "matter", deviceType: "other", config: parsedFields };
+  }
 
   try {
     const data: unknown = JSON.parse(payload);
@@ -56,7 +69,17 @@ function getDeviceConfigFromQr(payload: string): Partial<DeviceConfig> | null {
     }
   }
 
-  return parsedFields.deviceId ? parsedFields : null;
+  const searchText = `${payload} ${Object.values(parsedFields).join(" ")}`.toLowerCase();
+  const provider: QrProvider = /tuya|smart[\s_-]?life/i.test(searchText)
+    ? "tuya"
+    : "other";
+  const deviceType: QrDeviceType = /vacuum|robot|робот|пылесос/i.test(searchText)
+    ? "vacuum"
+    : /television|\btv\b|телевизор/i.test(searchText)
+      ? "television"
+      : "other";
+
+  return { provider, deviceType, config: parsedFields };
 }
 
 type DeviceSettingsModalProps = {
@@ -85,6 +108,7 @@ export function DeviceSettingsModal({
   const [draft, setDraft] = useState(config);
   const [notice, setNotice] = useState("");
   const [isScanning, setIsScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<QrScanResult | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanFrameRef = useRef<number | null>(null);
@@ -105,6 +129,7 @@ export function DeviceSettingsModal({
     if (!isOpen) return;
     setDraft(config);
     setNotice("");
+    setScanResult(null);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -149,6 +174,7 @@ export function DeviceSettingsModal({
 
   const startScanner = async () => {
     setNotice("");
+    setScanResult(null);
     if (!navigator.mediaDevices?.getUserMedia) {
       setNotice("Камера недоступна. Открой приложение по HTTPS или введи Device ID вручную.");
       return;
@@ -213,15 +239,20 @@ export function DeviceSettingsModal({
           inversionAttempts: "attemptBoth",
         });
         if (code) {
-          const scannedConfig = getDeviceConfigFromQr(code.data);
+          const result = getDeviceConfigFromQr(code.data);
           stopScanner();
           setIsScanning(false);
-          if (!scannedConfig) {
-            setNotice("QR-код не содержит Device ID Tuya. Введи ID вручную из приложения Tuya/Smart Life.");
-            return;
+          setScanResult(result);
+          if (result.deviceType === "television") {
+            setNotice("Распознан телевизор. Профиль пылесоса не изменён — добавление телевизоров появится отдельно.");
+          } else if (result.provider === "matter") {
+            setNotice("Распознан код Matter. Сведения о модели и способе подключения показаны ниже.");
+          } else if (result.config.deviceId) {
+            setDraft((current) => ({ ...current, ...result.config }));
+            setNotice("Данные QR-кода подставлены. Проверь их перед сохранением.");
+          } else {
+            setNotice("QR-код считан, но в нём нет Device ID. Профиль не изменён.");
           }
-          setDraft((current) => ({ ...current, ...scannedConfig }));
-          setNotice("QR-код распознан. Проверь данные и нажми «Сохранить».");
           return;
         }
         scanFrameRef.current = window.requestAnimationFrame(scanFrame);
@@ -248,7 +279,28 @@ export function DeviceSettingsModal({
     onReset();
     setDraft(DEFAULT_DEVICE_CONFIG);
     setNotice("Настройки Tuya сброшены.");
+    setScanResult(null);
   };
+
+  const scanGuidance = scanResult
+    ? scanResult.provider === "matter"
+      ? {
+          title: "QR-код Matter распознан",
+          message:
+            "Добавь устройство через приложение умного дома на телефоне (например, Apple Home, Google Home или SmartThings). Прямое подключение Matter к Колобку пока не реализовано.",
+        }
+      : scanResult.provider === "tuya"
+        ? {
+            title: "Похоже на Tuya / Smart Life",
+            message:
+              "Сначала добавь устройство в официальное приложение Smart Life или Tuya. Чтобы Колобок мог отправлять команды, потребуется безопасно связать аккаунт с сервисом производителя. Эта интеграция пока не подключена; QR-код только распознаёт данные.",
+          }
+        : {
+            title: "QR-код считан",
+            message:
+              "В нём не удалось определить поддерживаемый способ подключения. Если устройство работает с Tuya, проверь его в Smart Life; иначе добавление через этот код пока не поддерживается.",
+          }
+    : null;
 
   return createPortal(
     <AnimatePresence>
@@ -282,6 +334,10 @@ export function DeviceSettingsModal({
           <p className="smart-home-eyebrow">УМНЫЙ ДОМ · НАСТРОЙКИ</p>
           <h2 id="device-settings-title">Данные устройства</h2>
           <div className="smart-home-scanner">
+            <p className="smart-home-scan-intro">
+              Шаг 1. Отсканируй QR-код на устройстве или упаковке. Колобок определит
+              формат кода и подскажет следующий шаг.
+            </p>
             <div className="smart-home-scanner-actions">
               <button
                 type="button"
@@ -302,14 +358,39 @@ export function DeviceSettingsModal({
                 </button>
               )}
             </div>
-            {isScanning && (
-              <video
-                ref={videoRef}
-                className="smart-home-camera"
-                muted
-                playsInline
-                aria-label="Предпросмотр камеры для сканирования QR-кода"
-              />
+            <video
+              ref={videoRef}
+              className="smart-home-camera"
+              hidden={!isScanning}
+              muted
+              playsInline
+              aria-label="Предпросмотр камеры для сканирования QR-кода"
+            />
+            {scanGuidance && (
+              <div
+                className={`smart-home-scan-result${scanResult?.provider === "other" ? " is-warning" : ""}`}
+                role="status"
+              >
+                {scanResult?.provider === "other" ? (
+                  <AlertCircle size={18} aria-hidden="true" />
+                ) : (
+                  <CheckCircle2 size={18} aria-hidden="true" />
+                )}
+                <div>
+                  <strong>{scanGuidance.title}</strong>
+                  <p>{scanGuidance.message}</p>
+                  {scanResult?.deviceType === "television" && (
+                    <p className="smart-home-scan-note">
+                      Для телевизора понадобится отдельная карточка устройства; настройки робота-пылесоса сохранены.
+                    </p>
+                  )}
+                  {scanResult?.deviceType === "vacuum" && (
+                    <p className="smart-home-scan-note">
+                      В коде распознан робот-пылесос.
+                    </p>
+                  )}
+                </div>
+              </div>
             )}
           </div>
           <form onSubmit={handleSubmit}>
@@ -357,7 +438,7 @@ export function DeviceSettingsModal({
             </div>
           </form>
           <p className="smart-home-local-note">
-            Данные хранятся только в этом браузере. Подключение к Tuya Cloud пока не настроено.
+            Эти данные хранятся в браузере для отображения. Для команд Tuya Cloud используется Device ID из настроек Vercel.
           </p>
         </motion.section>
       </motion.div>

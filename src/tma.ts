@@ -1,5 +1,8 @@
 export type TelegramWebApp = {
 	initData: string;
+	initDataUnsafe?: {
+		start_param?: string;
+	};
 	colorScheme?: "light" | "dark";
 	ready?: () => void;
 	expand?: () => void;

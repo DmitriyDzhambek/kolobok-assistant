@@ -19,11 +19,12 @@ import { PartnerTab } from "./components/PartnerTab";
 import { DreamJar } from "./components/DreamJar";
 import { EnglishModal } from "./components/EnglishModal";
 import { InstallPwaPrompt } from "./components/InstallPwaPrompt";
-import { SmartHomeWidget, type VacuumStatus } from "./components/SmartHomeWidget";
+import { SmartHomeWidget } from "./components/SmartHomeWidget";
 import { useVoiceAssistant } from "./hooks/useVoiceAssistant";
 import type { ActiveVoiceTimer, SmartHomeVoiceContext } from "./hooks/useVoiceAssistant";
 import { useKolobokDialogue } from "./hooks/useKolobokDialogue";
 import { useDeviceConfig } from "./hooks/useDeviceConfig";
+import { useSmartHome } from "./hooks/useSmartHome";
 import { useSWUpdate } from "./hooks/useSWUpdate";
 import { localAdd, localHabitsView, localMark } from "./habits/localStore";
 import { recordCryptoEarning, type CryptoCurrency } from "./dreams/storage";
@@ -66,12 +67,21 @@ export default function App() {
   const [crystals, setCrystals] = useState(readCrystals);
   const [dreamRevision, setDreamRevision] = useState(0);
   const [suggestedProjectId, setSuggestedProjectId] = useState<string>();
-  const [vacuumBattery, setVacuumBattery] = useState(85);
-  const [vacuumStatus, setVacuumStatus] = useState<VacuumStatus>("idle");
   const fallbackInputRef = useRef<HTMLInputElement>(null);
-  const vacuumBatteryRef = useRef(vacuumBattery);
+  const vacuumQuickStartHandledRef = useRef(false);
+  const vacuumQuickStartPendingRef = useRef(false);
   const { config: deviceConfig, setConfig: setDeviceConfig, resetConfig } = useDeviceConfig();
-  vacuumBatteryRef.current = vacuumBattery;
+  const {
+    battery: vacuumBattery,
+    status: vacuumStatus,
+    pendingAction: vacuumPendingAction,
+    error: smartHomeError,
+    clearError: clearSmartHomeError,
+    fetchDeviceStatus,
+    startRealVacuum,
+    stopRealVacuum,
+    returnToBase,
+  } = useSmartHome();
 
   useEffect(() => {
     initTma();
@@ -135,6 +145,27 @@ export default function App() {
   });
 
   useEffect(() => {
+    let attempts = 0;
+    const handleQuickStart = () => {
+      if (tgWebApp()?.initDataUnsafe?.start_param !== "start_vacuum") return false;
+      if (vacuumQuickStartHandledRef.current) return true;
+      vacuumQuickStartHandledRef.current = true;
+      vacuumQuickStartPendingRef.current = true;
+      void runCommand("запусти уборку").catch((commandError: unknown) =>
+        console.error("Не удалось запустить пылесос по QR-коду:", commandError),
+      );
+      return true;
+    };
+
+    if (handleQuickStart()) return;
+    const interval = window.setInterval(() => {
+      attempts += 1;
+      if (handleQuickStart() || attempts >= 12) window.clearInterval(interval);
+    }, 250);
+    return () => window.clearInterval(interval);
+  }, [runCommand]);
+
+  useEffect(() => {
     setDisplayedPhrase("");
     let position = 0;
     const timer = window.setInterval(() => {
@@ -145,24 +176,71 @@ export default function App() {
     return () => window.clearInterval(timer);
   }, [currentPhrase]);
 
-  const handleCommandResult = useCallback((result: {
+  const handleCommandResult = useCallback(async (result: {
     text: string;
     action?: string;
     suggestedProjectId?: string;
-  }) => {
+  }): Promise<void> => {
     notifyActivity();
-    setCurrentPhrase(result.text);
     if (result.action === "vacuumStart") {
-      setVacuumStatus("cleaning");
-      setIsEnglishOpen(true);
+      const started = await startRealVacuum();
+      if (started) {
+        result.text = vacuumQuickStartPendingRef.current
+          ? "Привет! Пылесос получил команду начать уборку по QR-коду. Отдыхайте!"
+          : "Готово! Пылесос поехал убираться.";
+        vacuumQuickStartPendingRef.current = false;
+        setIsEnglishOpen(true);
+      } else {
+        result.text = "Не удалось запустить пылесос. Проверьте подключение и настройки Tuya.";
+        result.action = "unknown";
+        vacuumQuickStartPendingRef.current = false;
+      }
+    } else if (result.action === "vacuumStop") {
+      const stopped = await stopRealVacuum();
+      result.text = stopped
+        ? "Готово! Пылесос остановлен."
+        : "Не удалось остановить пылесос. Проверьте подключение Tuya.";
+      if (!stopped) result.action = "unknown";
     } else if (result.action === "vacuumReturn") {
-      setVacuumStatus("returning");
+      const returned = await returnToBase();
+      result.text = returned
+        ? "Готово! Пылесос возвращается на базу."
+        : "Не удалось отправить пылесос на базу. Проверьте настройки команды Tuya.";
+      if (!returned) result.action = "unknown";
+    } else if (result.action === "vacuumStatus") {
+      const snapshot = await fetchDeviceStatus();
+      if (snapshot) {
+        const statusDescription = {
+          idle: "находится на базе",
+          cleaning: "сейчас убирается",
+          returning: "возвращается на базу",
+          charging: "заряжается на базе",
+          unknown: "статус пока неизвестен",
+        }[snapshot.status];
+        result.text = `У устройства «${deviceConfig.name}» ${
+          snapshot.battery === null
+            ? "данные о заряде пока недоступны"
+            : `${snapshot.battery}% заряда`
+        }. Сейчас оно ${statusDescription}.`;
+      } else {
+        result.text = "Не удалось получить состояние пылесоса из Tuya Cloud.";
+        result.action = "unknown";
+      }
     }
+    setCurrentPhrase(result.text);
     if (result.action === "earningSuggestion" && result.suggestedProjectId) {
       setSuggestedProjectId(result.suggestedProjectId);
       setActiveTab("magic");
     }
-  }, [notifyActivity, setCurrentPhrase]);
+  }, [
+    notifyActivity,
+    deviceConfig.name,
+    fetchDeviceStatus,
+    returnToBase,
+    setCurrentPhrase,
+    startRealVacuum,
+    stopRealVacuum,
+  ]);
 
   useEffect(() => {
     setOnCommandResult(handleCommandResult);
@@ -171,34 +249,6 @@ export default function App() {
   const handleTimerChange = useCallback((timer: ActiveVoiceTimer | null) => {
     setActiveTimer(timer);
   }, []);
-
-  useEffect(() => {
-    if (vacuumStatus !== "cleaning") return;
-    const interval = window.setInterval(() => {
-      const nextBattery = Math.max(0, vacuumBatteryRef.current - 0.5);
-      vacuumBatteryRef.current = nextBattery;
-      setVacuumBattery(nextBattery);
-      if (nextBattery < 15) setVacuumStatus("returning");
-    }, 1000);
-    return () => window.clearInterval(interval);
-  }, [vacuumStatus]);
-
-  useEffect(() => {
-    if (vacuumStatus !== "returning") return;
-    const timeout = window.setTimeout(() => setVacuumStatus("charging"), 5000);
-    return () => window.clearTimeout(timeout);
-  }, [vacuumStatus]);
-
-  useEffect(() => {
-    if (vacuumStatus !== "charging") return;
-    const interval = window.setInterval(() => {
-      const nextBattery = Math.min(100, vacuumBatteryRef.current + 1);
-      vacuumBatteryRef.current = nextBattery;
-      setVacuumBattery(nextBattery);
-      if (nextBattery >= 100) setVacuumStatus("idle");
-    }, 1000);
-    return () => window.clearInterval(interval);
-  }, [vacuumStatus]);
 
   useEffect(() => {
     setOnTimerChange(handleTimerChange);
@@ -494,21 +544,23 @@ export default function App() {
                     </div>
                   </form>
                 )}
-                {/* Replace local demo handlers with authenticated Tuya Cloud commands. */}
                 <SmartHomeWidget
                   config={deviceConfig}
                   onSaveConfig={setDeviceConfig}
                   onResetConfig={resetConfig}
                   battery={vacuumBattery}
                   status={vacuumStatus}
-                  onStartCleaning={() => setVacuumStatus("cleaning")}
+                  pendingAction={vacuumPendingAction}
+                  error={smartHomeError}
+                  onDismissError={clearSmartHomeError}
+                  onStartCleaning={() => void startRealVacuum()}
                   onSmartClean={() => {
                     void runCommand("запусти уборку с умом").catch((commandError: unknown) =>
                       console.error("Не удалось запустить умную уборку:", commandError),
                     );
                   }}
-                  onReturnHome={() => setVacuumStatus("returning")}
-                  onStopCleaning={() => setVacuumStatus("idle")}
+                  onReturnHome={() => void returnToBase()}
+                  onStopCleaning={() => void stopRealVacuum()}
                 />
               </div>
             </motion.main>

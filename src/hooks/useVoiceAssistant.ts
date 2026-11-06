@@ -19,14 +19,15 @@ export type VoiceAction =
   | "joke"
   | "earningSuggestion"
   | "vacuumStart"
+  | "vacuumStop"
   | "vacuumReturn"
   | "vacuumStatus"
   | "unknown";
 
 export interface SmartHomeVoiceContext {
   deviceName: string;
-  battery: number;
-  status: "idle" | "cleaning" | "returning" | "charging";
+  battery: number | null;
+  status: "idle" | "cleaning" | "returning" | "charging" | "unknown";
 }
 
 export interface ActiveVoiceTimer {
@@ -248,7 +249,9 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
   const wakeFlashTimerRef = useRef<number | null>(null);
   const productivityReminderRef = useRef<number | null>(null);
   const workTimerRef = useRef<number | null>(null);
-  const commandHandlerRef = useRef<(result: VoiceResult) => void>(() => {});
+  const commandHandlerRef = useRef<
+    (result: VoiceResult) => void | Promise<void>
+  >(() => {});
   const transcriptHandlerRef = useRef<((text: string) => void) | null>(null);
   const timerHandlerRef = useRef<(timer: ActiveVoiceTimer | null) => void>(() => {});
   const restartWakeListeningRef = useRef<() => void>(() => {});
@@ -260,8 +263,8 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
   const speechRequestRef = useRef(0);
   const smartHomeContextRef = useRef<SmartHomeVoiceContext>({
     deviceName: "Наш робот пылесос",
-    battery: 85,
-    status: "idle",
+    battery: null,
+    status: "unknown",
   });
 
   const clearTimer = (timerRef: React.MutableRefObject<number | null>) => {
@@ -334,9 +337,13 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
             ? "возвращается на базу"
             : vacuumStatus === "charging"
               ? "заряжается на базе"
-              : "находится на базе";
+              : vacuumStatus === "idle"
+                ? "находится на базе"
+                : "статус пока неизвестен";
       return {
-        text: `У устройства «${deviceName}» ${battery}% заряда. Сейчас оно ${stateDescription}.`,
+        text: `У устройства «${deviceName}» ${
+          battery === null ? "данные о заряде пока недоступны" : `${battery}% заряда`
+        }. Сейчас оно ${stateDescription}.`,
         action: "vacuumStatus",
       };
     }
@@ -344,6 +351,12 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
       return {
         text: `Запускаю «${deviceName}». Пока пылесос работает, открою английский тренажёр и поставлю таймер на 20 минут.`,
         action: "vacuumStart",
+      };
+    }
+    if (/выключи (?:робот-?)?пылесос|останови(?:сь|ть)?|прекрати уборку|стоп пылесос/i.test(normalized)) {
+      return {
+        text: `Останавливаю «${deviceName}».`,
+        action: "vacuumStop",
       };
     }
     if (/верни на базу|на базу|отправь .*пылесос|домой|зарядка/i.test(normalized)) {
@@ -444,7 +457,7 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
 
   const executeCommand = useCallback(async (text: string) => {
     const result = processCommand(text);
-    commandHandlerRef.current(result);
+    await commandHandlerRef.current(result);
     if (result.action === "timer" || result.action === "vacuumStart") {
       const duration =
         result.action === "vacuumStart"
@@ -838,7 +851,7 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     setStatus("idle");
   }, [stopCurrentRecognition]);
 
-  const setOnCommandResult = useCallback((handler: (result: VoiceResult) => void) => {
+  const setOnCommandResult = useCallback((handler: (result: VoiceResult) => void | Promise<void>) => {
     commandHandlerRef.current = handler;
   }, []);
 
