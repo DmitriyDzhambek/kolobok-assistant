@@ -20,6 +20,7 @@ import { DreamJar } from "./components/DreamJar";
 import { EnglishModal } from "./components/EnglishModal";
 import { useVoiceAssistant } from "./hooks/useVoiceAssistant";
 import type { ActiveVoiceTimer } from "./hooks/useVoiceAssistant";
+import { useKolobokDialogue } from "./hooks/useKolobokDialogue";
 import { localAdd, localHabitsView, localMark } from "./habits/localStore";
 import { recordCryptoEarning, type CryptoCurrency } from "./dreams/storage";
 import { initTma, tgWebApp } from "./tma";
@@ -50,7 +51,6 @@ function readCrystals(): number {
 export default function App() {
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>("night");
   const [activeTab, setActiveTab] = useState<TabType>("main");
-  const [botText, setBotText] = useState("Привет! Я Колобок. Ты отдыхай, а я для тебя заработаю!");
   const [commandDraft, setCommandDraft] = useState("");
   const [isTelegramMiniApp, setIsTelegramMiniApp] = useState(false);
   const [activeTimer, setActiveTimer] = useState<ActiveVoiceTimer | null>(null);
@@ -90,22 +90,37 @@ export default function App() {
     stopRecognition,
     setWakeWordMode,
     runCommand,
-    speak,
     setOnCommandResult,
     setOnTimerChange,
     clearError,
+    status: voiceStatus,
   } = useVoiceAssistant({ lang: "ru-RU" });
+  const {
+    currentPhrase,
+    setCurrentPhrase,
+    isSleeping,
+    isSpeaking,
+    notifyActivity,
+  } = useKolobokDialogue({
+    activeTab,
+    isVoiceActive:
+      isListening ||
+      voiceStatus === "processing" ||
+      voiceStatus === "speaking",
+  });
+
   const handleCommandResult = useCallback((result: {
     text: string;
     action?: string;
     suggestedProjectId?: string;
   }) => {
-    setBotText(result.text);
+    notifyActivity();
+    setCurrentPhrase(result.text);
     if (result.action === "earningSuggestion" && result.suggestedProjectId) {
       setSuggestedProjectId(result.suggestedProjectId);
       setActiveTab("magic");
     }
-  }, []);
+  }, [notifyActivity, setCurrentPhrase]);
 
   useEffect(() => {
     setOnCommandResult(handleCommandResult);
@@ -118,26 +133,6 @@ export default function App() {
   useEffect(() => {
     setOnTimerChange(handleTimerChange);
   }, [handleTimerChange, setOnTimerChange]);
-
-  useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour < 6 || hour >= 11) return;
-    const today = new Date().toLocaleDateString("sv-SE");
-    const greetingKey = "kolobok.morning-greeting.v1";
-    try {
-      if (window.localStorage.getItem(greetingKey) === today) return;
-      window.localStorage.setItem(greetingKey, today);
-    } catch (storageError) {
-      console.error("Не удалось сохранить отметку утреннего приветствия:", storageError);
-    }
-
-    const greeting =
-      "Доброе утро! Погоду можно проверить по твоему местоположению в карточке. Твой фокус дня — Английский. Выполним? Или сразу пойдём в Магию зарабатывать?";
-    setBotText(greeting);
-    void speak(greeting).catch((speechError: unknown) =>
-      console.info("Браузер не разрешил автоматическое утреннее озвучивание:", speechError),
-    );
-  }, [speak]);
 
   useEffect(() => {
     if (!activeTimer) return;
@@ -210,28 +205,28 @@ export default function App() {
       }
     }
     if (englishHabit) localMark(englishHabit.id, "done");
-    setBotText(
+    setCurrentPhrase(
       crystalsSaved
         ? englishHabit
           ? "Отличная работа! +10 кристаллов и привычка «Английский» отмечена."
           : "Слово выучено и +10 кристаллов начислены, но привычку «Английский» добавить не удалось."
         : "Слово выучено! Кристаллы не сохранились — проверь память браузера.",
     );
-  }, [crystals]);
+  }, [crystals, setCurrentPhrase]);
 
   const handleEarningRecorded = useCallback(
     (amount: number, currency: CryptoCurrency): boolean => {
       try {
         recordCryptoEarning(amount, currency);
         setDreamRevision((revision) => revision + 1);
-        setBotText(`Записал ${amount} ${currency} в баланс Сундука желаний.`);
+        setCurrentPhrase(`Записал ${amount} ${currency} в баланс Сундука желаний.`);
         return true;
       } catch (earningError) {
         console.error("Не удалось записать заработок в сундук желаний:", earningError);
         return false;
       }
     },
-    [],
+    [setCurrentPhrase],
   );
 
   const handleSuggestionHandled = useCallback(() => {
@@ -283,28 +278,32 @@ export default function App() {
               {/* Колобок по центру */}
               <div className="home-content">
                 <Kolobok
-                  state={isListening ? "listen" : "idle"}
+                  state={isListening ? "listen" : isSpeaking ? "speak" : "idle"}
                   timeOfDay={timeOfDay}
                   wakeWordActive={isWakeWordMode}
+                  isSleeping={isSleeping}
                 />
 
                 {/* Облачко с текстом */}
-                <motion.div
-                  className={`bubble mt-4 min-w-[280px]${visibleError ? " bubble-error" : ""}`}
-                  key={visibleError ? `error-${visibleError}` : botText}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <div className="bubble-text whitespace-pre-wrap">
-                    {visibleError || botText}
-                  </div>
-                  {!visibleError && interimText && (
-                    <div className="bubble-text text-white/60 italic mt-1">
-                      {interimText}...
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    className={`bubble mt-4 min-w-[280px]${visibleError ? " bubble-error" : ""}`}
+                    key={visibleError ? `error-${visibleError}` : currentPhrase}
+                    initial={{ opacity: 0, y: 7, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -5, scale: 0.98 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="bubble-text whitespace-pre-wrap">
+                      {visibleError || currentPhrase}
                     </div>
-                  )}
-                </motion.div>
+                    {!visibleError && interimText && (
+                      <div className="bubble-text text-white/60 italic mt-1">
+                        {interimText}...
+                      </div>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
 
                 {/* Волшебная кнопка-палочка */}
                 <AnimatePresence>

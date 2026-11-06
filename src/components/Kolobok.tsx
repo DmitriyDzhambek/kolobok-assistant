@@ -1,11 +1,13 @@
 import { motion } from "framer-motion";
 import type { TimeOfDay } from "../utils/timeContext";
+import "./Kolobok.css";
 
 type Props = {
 	state: "idle" | "listen" | "think" | "speak";
 	portfolioStatus?: "profit" | "loss" | "neutral";
 	timeOfDay?: TimeOfDay;
 	wakeWordActive?: boolean;
+	isSleeping?: boolean;
 };
 
 /**
@@ -24,6 +26,7 @@ export function Kolobok({
 	portfolioStatus = "neutral",
 	timeOfDay = "night",
 	wakeWordActive = false,
+	isSleeping = false,
 }: Props) {
 	const auraColor =
 		portfolioStatus === "profit"
@@ -42,15 +45,17 @@ export function Kolobok({
 
 	return (
 		<motion.div
-			className={`kolobok-wrap state-${state} mood-${portfolioStatus} tod-${timeOfDay}${wakeWordActive ? " wake-word-active" : ""}`}
-			animate={
+			className={`kolobok-wrap state-${state} mood-${portfolioStatus} tod-${timeOfDay}${wakeWordActive ? " wake-word-active" : ""}${isSleeping ? " is-sleeping" : ""}`}
+			animate={isSleeping
+				? { y: [0, -2, 0], scale: [1, 0.99, 1] }
+				:
 				portfolioStatus === "profit"
 					? { y: [0, -6, 0], scale: [1, 1.03, 1] }
 					: portfolioStatus === "loss"
 						? { y: [0, 2, 0] }
 						: { y: [0, -3, 0] }
 			}
-			transition={{ duration: portfolioStatus === "profit" ? 1.6 : 3, repeat: Infinity, ease: "easeInOut" }}
+			transition={{ duration: isSleeping ? 4 : portfolioStatus === "profit" ? 1.6 : 3, repeat: Infinity, ease: "easeInOut" }}
 		>
 			<svg
 				className="kolobok"
@@ -217,6 +222,11 @@ export function Kolobok({
 					</g>
 				</g>
 			</svg>
+			{isSleeping && (
+				<span className="kolobok-sleep-indicator" aria-label="Колобок спит">
+					Zzz
+				</span>
+			)}
 		</motion.div>
 	);
 }
