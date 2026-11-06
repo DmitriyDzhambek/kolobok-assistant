@@ -18,9 +18,13 @@ import { MagicIncome } from "./components/MagicIncome";
 import { PartnerTab } from "./components/PartnerTab";
 import { DreamJar } from "./components/DreamJar";
 import { EnglishModal } from "./components/EnglishModal";
+import { InstallPwaPrompt } from "./components/InstallPwaPrompt";
+import { SmartHomeWidget, type VacuumStatus } from "./components/SmartHomeWidget";
 import { useVoiceAssistant } from "./hooks/useVoiceAssistant";
-import type { ActiveVoiceTimer } from "./hooks/useVoiceAssistant";
+import type { ActiveVoiceTimer, SmartHomeVoiceContext } from "./hooks/useVoiceAssistant";
 import { useKolobokDialogue } from "./hooks/useKolobokDialogue";
+import { useDeviceConfig } from "./hooks/useDeviceConfig";
+import { useSWUpdate } from "./hooks/useSWUpdate";
 import { localAdd, localHabitsView, localMark } from "./habits/localStore";
 import { recordCryptoEarning, type CryptoCurrency } from "./dreams/storage";
 import { initTma, tgWebApp } from "./tma";
@@ -49,17 +53,25 @@ function readCrystals(): number {
  * Приложение Kolobok с голосовым ассистентом и навигацией
  */
 export default function App() {
+  useSWUpdate();
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>("night");
   const [activeTab, setActiveTab] = useState<TabType>("main");
+  const [displayedPhrase, setDisplayedPhrase] = useState("");
   const [commandDraft, setCommandDraft] = useState("");
   const [isTelegramMiniApp, setIsTelegramMiniApp] = useState(false);
+  const [isCryptoSurvivalActive, setIsCryptoSurvivalActive] = useState(false);
   const [activeTimer, setActiveTimer] = useState<ActiveVoiceTimer | null>(null);
   const [timerNow, setTimerNow] = useState(() => Date.now());
   const [isEnglishOpen, setIsEnglishOpen] = useState(false);
   const [crystals, setCrystals] = useState(readCrystals);
   const [dreamRevision, setDreamRevision] = useState(0);
   const [suggestedProjectId, setSuggestedProjectId] = useState<string>();
+  const [vacuumBattery, setVacuumBattery] = useState(85);
+  const [vacuumStatus, setVacuumStatus] = useState<VacuumStatus>("idle");
   const fallbackInputRef = useRef<HTMLInputElement>(null);
+  const vacuumBatteryRef = useRef(vacuumBattery);
+  const { config: deviceConfig, setConfig: setDeviceConfig, resetConfig } = useDeviceConfig();
+  vacuumBatteryRef.current = vacuumBattery;
 
   useEffect(() => {
     initTma();
@@ -85,6 +97,7 @@ export default function App() {
     error,
     isSupported,
     isWakeWordMode,
+    wakeWordHeard,
     permissionIssue,
     startRecognition,
     stopRecognition,
@@ -92,12 +105,22 @@ export default function App() {
     runCommand,
     setOnCommandResult,
     setOnTimerChange,
+    setSmartHomeContext,
     clearError,
     status: voiceStatus,
   } = useVoiceAssistant({ lang: "ru-RU" });
+  useEffect(() => {
+    const context: SmartHomeVoiceContext = {
+      deviceName: deviceConfig.name,
+      battery: vacuumBattery,
+      status: vacuumStatus,
+    };
+    setSmartHomeContext(context);
+  }, [deviceConfig.name, setSmartHomeContext, vacuumBattery, vacuumStatus]);
   const {
     currentPhrase,
     setCurrentPhrase,
+    isTyping,
     isSleeping,
     isSpeaking,
     notifyActivity,
@@ -105,9 +128,22 @@ export default function App() {
     activeTab,
     isVoiceActive:
       isListening ||
+      isWakeWordMode ||
+      isCryptoSurvivalActive ||
       voiceStatus === "processing" ||
       voiceStatus === "speaking",
   });
+
+  useEffect(() => {
+    setDisplayedPhrase("");
+    let position = 0;
+    const timer = window.setInterval(() => {
+      position = Math.min(position + 2, currentPhrase.length);
+      setDisplayedPhrase(currentPhrase.slice(0, position));
+      if (position >= currentPhrase.length) window.clearInterval(timer);
+    }, 16);
+    return () => window.clearInterval(timer);
+  }, [currentPhrase]);
 
   const handleCommandResult = useCallback((result: {
     text: string;
@@ -116,6 +152,12 @@ export default function App() {
   }) => {
     notifyActivity();
     setCurrentPhrase(result.text);
+    if (result.action === "vacuumStart") {
+      setVacuumStatus("cleaning");
+      setIsEnglishOpen(true);
+    } else if (result.action === "vacuumReturn") {
+      setVacuumStatus("returning");
+    }
     if (result.action === "earningSuggestion" && result.suggestedProjectId) {
       setSuggestedProjectId(result.suggestedProjectId);
       setActiveTab("magic");
@@ -129,6 +171,34 @@ export default function App() {
   const handleTimerChange = useCallback((timer: ActiveVoiceTimer | null) => {
     setActiveTimer(timer);
   }, []);
+
+  useEffect(() => {
+    if (vacuumStatus !== "cleaning") return;
+    const interval = window.setInterval(() => {
+      const nextBattery = Math.max(0, vacuumBatteryRef.current - 0.5);
+      vacuumBatteryRef.current = nextBattery;
+      setVacuumBattery(nextBattery);
+      if (nextBattery < 15) setVacuumStatus("returning");
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [vacuumStatus]);
+
+  useEffect(() => {
+    if (vacuumStatus !== "returning") return;
+    const timeout = window.setTimeout(() => setVacuumStatus("charging"), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [vacuumStatus]);
+
+  useEffect(() => {
+    if (vacuumStatus !== "charging") return;
+    const interval = window.setInterval(() => {
+      const nextBattery = Math.min(100, vacuumBatteryRef.current + 1);
+      vacuumBatteryRef.current = nextBattery;
+      setVacuumBattery(nextBattery);
+      if (nextBattery >= 100) setVacuumStatus("idle");
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [vacuumStatus]);
 
   useEffect(() => {
     setOnTimerChange(handleTimerChange);
@@ -281,6 +351,7 @@ export default function App() {
                   state={isListening ? "listen" : isSpeaking ? "speak" : "idle"}
                   timeOfDay={timeOfDay}
                   wakeWordActive={isWakeWordMode}
+                  wakeWordHeard={wakeWordHeard}
                   isSleeping={isSleeping}
                 />
 
@@ -295,7 +366,15 @@ export default function App() {
                     transition={{ duration: 0.2 }}
                   >
                     <div className="bubble-text whitespace-pre-wrap">
-                      {visibleError || currentPhrase}
+                      {!visibleError && timeOfDay === "morning" && (
+                        <span className="morning-greeting-sun" aria-hidden="true">☀️ </span>
+                      )}
+                      {visibleError || displayedPhrase}
+                      {!visibleError && isTyping && (
+                        <span className="morning-greeting-typing" aria-label="Загружаю курс">
+                          ...
+                        </span>
+                      )}
                     </div>
                     {!visibleError && interimText && (
                       <div className="bubble-text text-white/60 italic mt-1">
@@ -378,12 +457,15 @@ export default function App() {
                     className={`wake-word-toggle${isWakeWordMode ? " is-enabled" : ""}`}
                     role="switch"
                     aria-checked={isWakeWordMode}
+                    aria-label="Режим «Слушаю». Скажи «Колобок», чтобы обратиться к помощнику"
                     onClick={handleWakeWordToggle}
                   >
                     <span className="wake-word-toggle-track" aria-hidden="true">
                       <span />
                     </span>
-                    <span>Режим: {isWakeWordMode ? "Слушаю" : "выключен"}</span>
+                    <span>
+                      Режим «Слушаю»{isWakeWordMode ? " включён" : " выключен"} (скажи «Колобок»)
+                    </span>
                   </button>
                 ) : (
                   <p className="wake-word-hint" role="status">
@@ -412,6 +494,22 @@ export default function App() {
                     </div>
                   </form>
                 )}
+                {/* Replace local demo handlers with authenticated Tuya Cloud commands. */}
+                <SmartHomeWidget
+                  config={deviceConfig}
+                  onSaveConfig={setDeviceConfig}
+                  onResetConfig={resetConfig}
+                  battery={vacuumBattery}
+                  status={vacuumStatus}
+                  onStartCleaning={() => setVacuumStatus("cleaning")}
+                  onSmartClean={() => {
+                    void runCommand("запусти уборку с умом").catch((commandError: unknown) =>
+                      console.error("Не удалось запустить умную уборку:", commandError),
+                    );
+                  }}
+                  onReturnHome={() => setVacuumStatus("returning")}
+                  onStopCleaning={() => setVacuumStatus("idle")}
+                />
               </div>
             </motion.main>
           )}
@@ -429,6 +527,8 @@ export default function App() {
                 suggestedProjectId={suggestedProjectId}
                 onSuggestionHandled={handleSuggestionHandled}
                 onEarningRecorded={handleEarningRecorded}
+                onQuestReward={handleEarningRecorded}
+                onQuestActiveChange={setIsCryptoSurvivalActive}
               />
             </motion.main>
           )}
@@ -526,6 +626,7 @@ export default function App() {
         onClose={() => setIsEnglishOpen(false)}
         onLearned={handleEnglishLearned}
       />
+      <InstallPwaPrompt />
 
       {permissionIssue && (
         <div className="permission-overlay" role="presentation">

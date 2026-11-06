@@ -55,9 +55,9 @@ function DashboardCard({
         className="dashboard-card dashboard-focus-card"
         onClick={onClick}
         aria-label={`${label}: ${value}. Открыть тренажёр английского`}
-        initial={{ y: 0 }}
-        animate={{ y: [-6, 0, -6] }}
-        transition={{ duration: 3, ease: "easeInOut", repeat: Infinity, delay }}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay }}
         whileHover={{ scale: 1.04 }}
       >
         {content}

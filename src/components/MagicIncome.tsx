@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, DollarSign, Gem, Sparkles, Timer } from "lucide-react";
+import { ArrowUpRight, DollarSign, Gamepad2, Gem, Sparkles, Timer } from "lucide-react";
 import { AutoPilotModal } from "./AutoPilotModal";
+import { CryptoSurvival } from "./CryptoSurvival";
 import { EARNING_PROJECTS, type EarningProject } from "../data/earningProjects";
 import type { CryptoCurrency } from "../dreams/storage";
 
@@ -9,6 +10,8 @@ type MagicIncomeProps = {
   suggestedProjectId?: string;
   onSuggestionHandled?: () => void;
   onEarningRecorded?: (amount: number, currency: CryptoCurrency) => void;
+  onQuestReward: (amount: number, currency: CryptoCurrency) => boolean | void;
+  onQuestActiveChange: (isActive: boolean) => void;
 };
 
 function projectIcon(project: EarningProject) {
@@ -19,10 +22,21 @@ export function MagicIncome({
   suggestedProjectId,
   onSuggestionHandled,
   onEarningRecorded,
+  onQuestReward,
+  onQuestActiveChange,
 }: MagicIncomeProps) {
   const [selectedProject, setSelectedProject] = useState<EarningProject | null>(
     null,
   );
+  const [isCryptoSurvivalOpen, setIsCryptoSurvivalOpen] = useState(false);
+  const openCryptoSurvival = useCallback(() => {
+    setIsCryptoSurvivalOpen(true);
+    onQuestActiveChange(true);
+  }, [onQuestActiveChange]);
+  const closeCryptoSurvival = useCallback(() => {
+    setIsCryptoSurvivalOpen(false);
+    onQuestActiveChange(false);
+  }, [onQuestActiveChange]);
   const suggestedProject = EARNING_PROJECTS.find(
     (project) => project.id === suggestedProjectId,
   );
@@ -41,6 +55,14 @@ export function MagicIncome({
         </span>
         <h2 id="magic-title">Магия дохода</h2>
         <p>Выбери проект и узнай, как начать.</p>
+        <button
+          type="button"
+          className="crypto-survival-launch"
+          onClick={openCryptoSurvival}
+        >
+          <Gamepad2 size={19} aria-hidden="true" />
+          Начать Крипто-квест
+        </button>
       </div>
 
       <AnimatePresence>
@@ -127,6 +149,12 @@ export function MagicIncome({
           />
         )}
       </AnimatePresence>
+
+      <CryptoSurvival
+        isOpen={isCryptoSurvivalOpen}
+        onClose={closeCryptoSurvival}
+        onReward={onQuestReward}
+      />
     </section>
   );
 }

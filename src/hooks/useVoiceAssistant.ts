@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { localHabitsView } from "../habits/localStore";
 import { findQuickEarningProject } from "../data/earningProjects";
+import { getPreferredSpeechVoice } from "../speech/preferredVoice";
 
 export type VoiceStatus =
   | "idle"
@@ -17,7 +18,16 @@ export type VoiceAction =
   | "math"
   | "joke"
   | "earningSuggestion"
+  | "vacuumStart"
+  | "vacuumReturn"
+  | "vacuumStatus"
   | "unknown";
+
+export interface SmartHomeVoiceContext {
+  deviceName: string;
+  battery: number;
+  status: "idle" | "cleaning" | "returning" | "charging";
+}
 
 export interface ActiveVoiceTimer {
   startedAt: number;
@@ -72,7 +82,7 @@ function getRecognitionConstructor(): RecognitionConstructor | undefined {
 
 function getWakeWordCommand(text: string): string | null {
   const normalized = text.toLocaleLowerCase("ru-RU").replace(/ё/g, "е");
-  const wakeWord = /(?<![а-яё])(?:привет\s+)?колобок(?![а-яё])/;
+  const wakeWord = /(?<![а-яё])(?:привет\s+)?колоб(?:ок|ка|ку)(?![а-яё])/;
   const match = wakeWord.exec(normalized);
   if (!match) return null;
   return text.slice(match.index + match[0].length).trim().replace(/^[,!.:\s]+/, "");
@@ -227,6 +237,7 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     () => typeof window !== "undefined" && !!getRecognitionConstructor(),
   );
   const [isWakeWordMode, setIsWakeWordMode] = useState(false);
+  const [wakeWordHeard, setWakeWordHeard] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [permissionIssue, setPermissionIssue] = useState(false);
 
@@ -234,9 +245,11 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
   const modeRef = useRef<ListenMode>("off");
   const restartTimerRef = useRef<number | null>(null);
   const commandTimerRef = useRef<number | null>(null);
+  const wakeFlashTimerRef = useRef<number | null>(null);
   const productivityReminderRef = useRef<number | null>(null);
   const workTimerRef = useRef<number | null>(null);
   const commandHandlerRef = useRef<(result: VoiceResult) => void>(() => {});
+  const transcriptHandlerRef = useRef<((text: string) => void) | null>(null);
   const timerHandlerRef = useRef<(timer: ActiveVoiceTimer | null) => void>(() => {});
   const restartWakeListeningRef = useRef<() => void>(() => {});
   const scheduleReminderRef = useRef<() => void>(() => {});
@@ -244,6 +257,12 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
   const disposedRef = useRef(false);
   const wakeRequestIdRef = useRef(0);
   const startRetryCountRef = useRef(0);
+  const speechRequestRef = useRef(0);
+  const smartHomeContextRef = useRef<SmartHomeVoiceContext>({
+    deviceName: "Наш робот пылесос",
+    battery: 85,
+    status: "idle",
+  });
 
   const clearTimer = (timerRef: React.MutableRefObject<number | null>) => {
     if (timerRef.current !== null) {
@@ -269,22 +288,34 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     if (!("speechSynthesis" in window)) {
       return Promise.reject(new Error("Синтез речи не поддерживается"));
     }
+    const speechRequest = ++speechRequestRef.current;
     return new Promise<void>((resolve, reject) => {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = config.lang ?? "ru-RU";
-      utterance.rate = rate;
-      utterance.pitch = pitch;
-      const russianVoice = window.speechSynthesis
-        .getVoices()
-        .find((voice) => voice.lang.toLowerCase().startsWith("ru"));
-      if (russianVoice) utterance.voice = russianVoice;
-      utterance.onstart = () => setStatus("speaking");
+      utterance.rate = Math.min(rate, 0.96);
+      utterance.pitch = Math.max(pitch, 1.06);
+      const preferredVoice = getPreferredSpeechVoice(
+        window.speechSynthesis.getVoices(),
+        utterance.lang,
+      );
+      if (preferredVoice) utterance.voice = preferredVoice;
+      utterance.onstart = () => {
+        if (speechRequest === speechRequestRef.current) setStatus("speaking");
+      };
       utterance.onend = () => {
+        if (speechRequest !== speechRequestRef.current) {
+          resolve();
+          return;
+        }
         setStatus("idle");
         resolve();
       };
-      utterance.onerror = () => {
-        setStatus("idle");
+      utterance.onerror = (event) => {
+        if (speechRequest === speechRequestRef.current) setStatus("idle");
+        if (event.error === "canceled" || event.error === "interrupted") {
+          resolve();
+          return;
+        }
         reject(new Error("Не удалось озвучить ответ"));
       };
       window.speechSynthesis.cancel();
@@ -294,6 +325,33 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
 
   const processCommand = useCallback((text: string): VoiceResult => {
     const normalized = text.toLocaleLowerCase("ru-RU").replace(/ё/g, "е");
+    const { deviceName, battery, status: vacuumStatus } = smartHomeContextRef.current;
+    if (/какой заряд|сколько зарядки|сколько заряда|уровень заряд|что с пылесосом|статус пылесоса/i.test(normalized)) {
+      const stateDescription =
+        vacuumStatus === "cleaning"
+          ? "сейчас убирается"
+          : vacuumStatus === "returning"
+            ? "возвращается на базу"
+            : vacuumStatus === "charging"
+              ? "заряжается на базе"
+              : "находится на базе";
+      return {
+        text: `У устройства «${deviceName}» ${battery}% заряда. Сейчас оно ${stateDescription}.`,
+        action: "vacuumStatus",
+      };
+    }
+    if (/уберись|включи (?:робот-?)?пылесос|запусти (?:уборку|пылесос)|начни уборку/i.test(normalized)) {
+      return {
+        text: `Запускаю «${deviceName}». Пока пылесос работает, открою английский тренажёр и поставлю таймер на 20 минут.`,
+        action: "vacuumStart",
+      };
+    }
+    if (/верни на базу|на базу|отправь .*пылесос|домой|зарядка/i.test(normalized)) {
+      return {
+        text: `Отправляю «${deviceName}» на базу. Зарядка начнётся через несколько секунд.`,
+        action: "vacuumReturn",
+      };
+    }
     const freeTimeMatch = normalized.match(
       /(\d{1,3})\s*(?:минут(?:а|ы)?|мин)\s*(?:свободного\s+времени|свободн\w*)?/,
     );
@@ -387,8 +445,11 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
   const executeCommand = useCallback(async (text: string) => {
     const result = processCommand(text);
     commandHandlerRef.current(result);
-    if (result.action === "timer") {
-      const duration = parseTimerDuration(text);
+    if (result.action === "timer" || result.action === "vacuumStart") {
+      const duration =
+        result.action === "vacuumStart"
+          ? 20 * 60 * 1000
+          : parseTimerDuration(text);
       if (duration !== null) {
         clearTimer(workTimerRef);
         const startedAt = Date.now();
@@ -439,7 +500,7 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     const recognition = new RecognitionAPI();
     let didStart = false;
     recognition.lang = config.lang ?? "ru-RU";
-    recognition.continuous = requestedMode === "wake";
+    recognition.continuous = requestedMode !== "manual";
     recognition.interimResults = true;
     modeRef.current = requestedMode;
     recognitionRef.current = recognition;
@@ -468,12 +529,19 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
         scheduleReminderRef.current();
       }
       if (currentMode === "wake") {
-        const partial = finalText || interim;
-        const command = getWakeWordCommand(partial);
+        const partial = [finalText, interim].filter(Boolean).join(" ");
+        const finalCommand = getWakeWordCommand(finalText);
+        const command = finalCommand ?? getWakeWordCommand(interim) ?? getWakeWordCommand(partial);
         if (command !== null && !activeCommandRef.current) {
-          if (!finalText.trim()) return;
+          if (command && finalCommand === null) return;
           activeCommandRef.current = true;
           clearTimer(restartTimerRef);
+          clearTimer(wakeFlashTimerRef);
+          setWakeWordHeard(true);
+          wakeFlashTimerRef.current = window.setTimeout(() => {
+            wakeFlashTimerRef.current = null;
+            setWakeWordHeard(false);
+          }, 1400);
           modeRef.current = "command";
           setStatus("processing");
           stopCurrentRecognition();
@@ -515,6 +583,7 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
 
       if (currentMode === "command" && finalText.trim()) {
         clearTimer(commandTimerRef);
+        clearTimer(restartTimerRef);
         activeCommandRef.current = false;
         modeRef.current = "wake";
         setInterimText("");
@@ -535,6 +604,10 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
         setIsListening(false);
         stopCurrentRecognition();
         playDing();
+        if (transcriptHandlerRef.current) {
+          transcriptHandlerRef.current(finalText.trim());
+          return;
+        }
         void executeCommand(finalText.trim());
       }
     };
@@ -567,6 +640,16 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
       if (recognitionRef.current === recognition) recognitionRef.current = null;
       setIsListening(false);
       if (requestedMode === "manual" && didStart) playDing();
+      if (modeRef.current === "command" && requestedMode === "command") {
+        clearTimer(restartTimerRef);
+        restartTimerRef.current = window.setTimeout(() => {
+          restartTimerRef.current = null;
+          if (modeRef.current === "command" && document.visibilityState === "visible") {
+            startRecognitionInstance("command");
+          }
+        }, 300);
+        return;
+      }
       if (modeRef.current === "command") {
         clearTimer(commandTimerRef);
         activeCommandRef.current = false;
@@ -663,10 +746,14 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     setPermissionIssue(false);
     if (!enabled) {
       clearTimer(productivityReminderRef);
+      clearTimer(wakeFlashTimerRef);
+      setWakeWordHeard(false);
       setIsWakeWordMode(false);
       setIsListening(false);
       setPermissionIssue(false);
       setStatus("idle");
+      speechRequestRef.current += 1;
+      window.speechSynthesis?.cancel();
       return;
     }
     if (!getRecognitionConstructor()) {
@@ -696,6 +783,8 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
 
   const startRecognition = useCallback(async () => {
     wakeRequestIdRef.current += 1;
+    clearTimer(wakeFlashTimerRef);
+    setWakeWordHeard(false);
     if (!getRecognitionConstructor()) {
       setIsSupported(false);
       return;
@@ -736,11 +825,14 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     activeCommandRef.current = false;
     clearTimer(restartTimerRef);
     clearTimer(commandTimerRef);
+    clearTimer(wakeFlashTimerRef);
     clearTimer(productivityReminderRef);
     stopCurrentRecognition(true);
+    speechRequestRef.current += 1;
     window.speechSynthesis?.cancel();
     playDing();
     setIsWakeWordMode(false);
+    setWakeWordHeard(false);
     setIsListening(false);
     setInterimText("");
     setStatus("idle");
@@ -750,12 +842,20 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     commandHandlerRef.current = handler;
   }, []);
 
+  const setOnTranscript = useCallback((handler: ((text: string) => void) | null) => {
+    transcriptHandlerRef.current = handler;
+  }, []);
+
   const setOnTimerChange = useCallback(
     (handler: (timer: ActiveVoiceTimer | null) => void) => {
       timerHandlerRef.current = handler;
     },
     [],
   );
+
+  const setSmartHomeContext = useCallback((context: SmartHomeVoiceContext) => {
+    smartHomeContextRef.current = context;
+  }, []);
 
   const clearError = useCallback(() => {
     setError(null);
@@ -772,9 +872,11 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
       modeRef.current = "off";
       clearTimer(restartTimerRef);
       clearTimer(commandTimerRef);
+      clearTimer(wakeFlashTimerRef);
       clearTimer(productivityReminderRef);
       clearTimer(workTimerRef);
       stopCurrentRecognition(true);
+      speechRequestRef.current += 1;
       window.speechSynthesis?.cancel();
     };
   }, [stopCurrentRecognition]);
@@ -812,6 +914,7 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     error,
     isSupported,
     isWakeWordMode,
+    wakeWordHeard,
     isListening,
     permissionIssue,
     setWakeWordMode,
@@ -821,7 +924,9 @@ export function useVoiceAssistant(config: VoiceConfig = {}) {
     processCommand,
     runCommand: executeCommand,
     setOnCommandResult,
+    setOnTranscript,
     setOnTimerChange,
+    setSmartHomeContext,
     clearError,
   };
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getPreferredSpeechVoice } from "../speech/preferredVoice";
 
 export type DialogueTab = "main" | "magic" | "partner" | "dreams";
 
@@ -13,6 +14,74 @@ export const randomTips = [
   "Небольшой перерыв и стакан воды тоже помогают держать фокус.",
   "Если есть несколько свободных минут, можно выбрать короткое задание в Магии дохода.",
 ];
+
+const MORNING_GREETING_KEY = "kolobok.morning-crypto-greeting.v1";
+
+type CoinGeckoTonResponse = {
+  "the-open-network"?: {
+    rub?: number;
+  };
+};
+
+function isMorning(date = new Date()): boolean {
+  const hour = date.getHours();
+  return hour >= 6 && hour < 12;
+}
+
+function getTodayKey(): string {
+  return new Date().toLocaleDateString("sv-SE");
+}
+
+function hasMorningGreetingToday(): boolean {
+  try {
+    return window.localStorage.getItem(MORNING_GREETING_KEY) === getTodayKey();
+  } catch (storageError) {
+    console.error("Не удалось проверить утреннее приветствие:", storageError);
+    return false;
+  }
+}
+
+function markMorningGreetingShown(): void {
+  try {
+    window.localStorage.setItem(MORNING_GREETING_KEY, getTodayKey());
+  } catch (storageError) {
+    console.error("Не удалось сохранить дату утреннего приветствия:", storageError);
+  }
+}
+
+export async function fetchTonRate(): Promise<number | null> {
+  try {
+    const response = await fetch(
+      "https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=rub",
+      { headers: { Accept: "application/json" } },
+    );
+    if (!response.ok) {
+      throw new Error(`CoinGecko вернул ошибку ${response.status}`);
+    }
+
+    const data: CoinGeckoTonResponse = await response.json();
+    const rate = data["the-open-network"]?.rub;
+    if (typeof rate !== "number" || !Number.isFinite(rate) || rate <= 0) {
+      throw new Error("CoinGecko вернул некорректный курс TON");
+    }
+    return rate;
+  } catch (error) {
+    console.error("Ошибка API курса TON:", error);
+    return null;
+  }
+}
+
+export async function generateMorningGreeting(): Promise<string | null> {
+  const rate = await fetchTonRate();
+  if (rate === null) {
+    return "Доброе утро! Не удалось проверить курс TON, но это не повод грустить. Твоя копилка ждёт пополнения. Начнём?";
+  }
+
+  const formattedRate = new Intl.NumberFormat("ru-RU", {
+    maximumFractionDigits: 2,
+  }).format(rate);
+  return `Доброе утро! Пока ты просыпаешься, я проверил курсы. TON сейчас стоит ${formattedRate} рублей. Отличный повод начать день с заработка. Готов?`;
+}
 
 export function getGreeting(date = new Date()): string {
   const hour = date.getHours();
@@ -31,6 +100,7 @@ export function getGreeting(date = new Date()): string {
 interface UseKolobokDialogueResult {
   currentPhrase: string;
   setCurrentPhrase: (phrase: string) => void;
+  isTyping: boolean;
   isSleeping: boolean;
   isSpeaking: boolean;
   notifyActivity: (suppressGreeting?: boolean) => void;
@@ -41,6 +111,7 @@ export function useKolobokDialogue({
   isVoiceActive,
 }: UseKolobokDialogueOptions): UseKolobokDialogueResult {
   const [currentPhrase, setPhraseState] = useState(getGreeting);
+  const [isTyping, setIsTyping] = useState(false);
   const [isSleeping, setIsSleeping] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [activityRevision, setActivityRevision] = useState(0);
@@ -60,6 +131,11 @@ export function useKolobokDialogue({
   const boredomTriggerRef = useRef(0);
   const sleepTriggerRef = useRef(0);
   const sleepDeadlineRef = useRef<number | null>(null);
+  const morningGreetingPendingRef = useRef(
+    typeof window !== "undefined" && isMorning() && !hasMorningGreetingToday(),
+  );
+  const morningGreetingRef = useRef<string | null>(null);
+  const morningGreetingPromiseRef = useRef<Promise<string | null> | null>(null);
   isVoiceActiveRef.current = isVoiceActive;
 
   const stopSpeech = useCallback(() => {
@@ -94,8 +170,13 @@ export function useKolobokDialogue({
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "ru-RU";
-    utterance.rate = 1;
-    utterance.pitch = 1.08;
+    utterance.rate = 0.96;
+    utterance.pitch = 1.06;
+    const preferredVoice = getPreferredSpeechVoice(
+      window.speechSynthesis.getVoices(),
+      utterance.lang,
+    );
+    if (preferredVoice) utterance.voice = preferredVoice;
     let didStart = false;
     utterance.onstart = () => {
       if (speechRequestRef.current !== requestId) return;
@@ -157,6 +238,39 @@ export function useKolobokDialogue({
       setPhraseState("Я снова на связи! Чем займёмся?");
     }
     if (
+      morningGreetingPendingRef.current &&
+      !suppressGreeting &&
+      !isVoiceActiveRef.current
+    ) {
+      morningGreetingPendingRef.current = false;
+      hasGreetedRef.current = true;
+      stopSpeech();
+      const greeting = morningGreetingRef.current;
+      if (greeting) {
+        setPhraseState(greeting);
+        setIsTyping(false);
+        markMorningGreetingShown();
+        speakPhrase(greeting, true);
+      } else {
+        setIsTyping(true);
+        setPhraseState("Доброе утро! Проверяю актуальный курс TON…");
+        speakPhrase("Доброе утро! Проверяю актуальный курс TON.", true);
+        const greetingPromise =
+          morningGreetingPromiseRef.current ?? generateMorningGreeting();
+        morningGreetingPromiseRef.current = greetingPromise;
+        void greetingPromise.then((resolvedGreeting) => {
+          if (!resolvedGreeting) return;
+          morningGreetingRef.current = resolvedGreeting;
+          setPhraseState(resolvedGreeting);
+          setIsTyping(false);
+          markMorningGreetingShown();
+          if (!isVoiceActiveRef.current) speakPhrase(resolvedGreeting, true);
+        });
+      }
+      setActivityRevision((revision) => revision + 1);
+      return;
+    }
+    if (
       pendingGreetingRef.current &&
       !isVoiceActiveRef.current &&
       !suppressGreeting
@@ -191,7 +305,27 @@ export function useKolobokDialogue({
   }, [notifyActivity, speakPhrase]);
 
   useEffect(() => {
+    if (!morningGreetingPendingRef.current) return;
+    setPhraseState("Доброе утро! Проверяю актуальный курс TON…");
+    setIsTyping(true);
+    const greetingPromise =
+      morningGreetingPromiseRef.current ?? generateMorningGreeting();
+    morningGreetingPromiseRef.current = greetingPromise;
+    let active = true;
+    void greetingPromise.then((greeting) => {
+      if (!active || !greeting) return;
+      morningGreetingRef.current = greeting;
+      setPhraseState(greeting);
+      setIsTyping(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (hasGreetedRef.current) return;
+    if (morningGreetingPendingRef.current) return;
     const timer = window.setTimeout(() => {
       hasGreetedRef.current = true;
       const greeting = getGreeting();
@@ -332,6 +466,7 @@ export function useKolobokDialogue({
   return {
     currentPhrase,
     setCurrentPhrase,
+    isTyping,
     isSleeping,
     isSpeaking,
     notifyActivity,

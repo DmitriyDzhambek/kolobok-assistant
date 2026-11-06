@@ -7,6 +7,7 @@ type Props = {
 	portfolioStatus?: "profit" | "loss" | "neutral";
 	timeOfDay?: TimeOfDay;
 	wakeWordActive?: boolean;
+	wakeWordHeard?: boolean;
 	isSleeping?: boolean;
 };
 
@@ -26,6 +27,7 @@ export function Kolobok({
 	portfolioStatus = "neutral",
 	timeOfDay = "night",
 	wakeWordActive = false,
+	wakeWordHeard = false,
 	isSleeping = false,
 }: Props) {
 	const auraColor =
@@ -45,7 +47,7 @@ export function Kolobok({
 
 	return (
 		<motion.div
-			className={`kolobok-wrap state-${state} mood-${portfolioStatus} tod-${timeOfDay}${wakeWordActive ? " wake-word-active" : ""}${isSleeping ? " is-sleeping" : ""}`}
+			className={`kolobok-wrap state-${state} mood-${portfolioStatus} tod-${timeOfDay}${wakeWordActive ? " wake-word-active" : ""}${wakeWordHeard ? " wake-word-heard" : ""}${isSleeping ? " is-sleeping" : ""}`}
 			animate={isSleeping
 				? { y: [0, -2, 0], scale: [1, 0.99, 1] }
 				:
@@ -77,12 +79,23 @@ export function Kolobok({
 					</radialGradient>
 				</defs>
 
-				<circle
+				<motion.circle
 					className="aura"
 					cx="110"
 					cy="112"
 					r="100"
 					fill="url(#kb-aura)"
+					animate={
+						wakeWordActive
+							? { opacity: [0.55, 1, 0.55], scale: [0.96, 1.04, 0.96] }
+							: { opacity: 1, scale: 1 }
+					}
+					transition={
+						wakeWordActive
+							? { duration: 2, repeat: Infinity, ease: "easeInOut" }
+							: { duration: 0.2 }
+					}
+					style={{ transformOrigin: "110px 112px" }}
 				/>
 				<circle
 					className="ring"
