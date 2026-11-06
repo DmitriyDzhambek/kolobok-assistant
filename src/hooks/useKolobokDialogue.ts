@@ -33,7 +33,7 @@ interface UseKolobokDialogueResult {
   setCurrentPhrase: (phrase: string) => void;
   isSleeping: boolean;
   isSpeaking: boolean;
-  notifyActivity: () => void;
+  notifyActivity: (suppressGreeting?: boolean) => void;
 }
 
 export function useKolobokDialogue({
@@ -147,7 +147,7 @@ export function useKolobokDialogue({
     publishPhrase(phrase, false);
   }, [publishPhrase]);
 
-  const notifyActivity = useCallback(() => {
+  const notifyActivity = useCallback((suppressGreeting = false) => {
     audioUnlockedRef.current = true;
     lastActivityRef.current = Date.now();
     sleepDeadlineRef.current = null;
@@ -156,7 +156,11 @@ export function useKolobokDialogue({
       setIsSleeping(false);
       setPhraseState("Я снова на связи! Чем займёмся?");
     }
-    if (pendingGreetingRef.current && !isVoiceActiveRef.current) {
+    if (
+      pendingGreetingRef.current &&
+      !isVoiceActiveRef.current &&
+      !suppressGreeting
+    ) {
       pendingGreetingRef.current = false;
       hasGreetedRef.current = true;
       speakPhrase(getGreeting(), true);
@@ -174,12 +178,16 @@ export function useKolobokDialogue({
   useEffect(() => {
     if (typeof document === "undefined") return;
 
-    const handleFirstClick = () => {
+    const handleDocumentClick = (event: MouseEvent) => {
       audioUnlockedRef.current = true;
-      notifyActivity();
+      const target = event.target;
+      const isVoiceControl =
+        target instanceof Element &&
+        Boolean(target.closest(".home-mic-button, .wake-word-toggle, .voice-fallback-form"));
+      notifyActivity(isVoiceControl);
     };
-    document.addEventListener("click", handleFirstClick, true);
-    return () => document.removeEventListener("click", handleFirstClick, true);
+    document.addEventListener("click", handleDocumentClick, true);
+    return () => document.removeEventListener("click", handleDocumentClick, true);
   }, [notifyActivity, speakPhrase]);
 
   useEffect(() => {
